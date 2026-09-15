@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "ChallengeApp",
+    "slug": "challenge-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#111827"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tonpseudo.challengeapp",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "L'app utilise ta position pour mesurer la distance parcourue pendant tes activités."
+      }
+    },
+    "android": {
+      "package": "com.tonpseudo.challengeapp",
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "L'app utilise ta position pour mesurer la distance parcourue."
+        }
+      ]
+    ]
+  }
+}
