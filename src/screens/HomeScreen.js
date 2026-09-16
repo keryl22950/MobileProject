@@ -1,76 +1,79 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable } from 'react-native';
 import { colors, spacing } from '../theme';
+import { useAuth } from '../context/AuthContext';
+import { subscribeToMyGroups } from '../services/groups';
 
-// TODO: remplacer par les vrais groupes de l'utilisateur, récupérés depuis
-// Firestore (collection "groups" où l'utilisateur courant est membre).
-const MOCK_GROUPS = [
-  {
-    id: '1',
-    challengeLabel: 'Course à pied',
-    icon: '🏃',
-    target: 50,
-    unit: 'km',
-    membersCount: 4,
-    timeLeft: '8h restantes',
-  },
-  {
-    id: '2',
-    challengeLabel: 'Pompes',
-    icon: '💪',
-    target: 500,
-    unit: 'reps',
-    membersCount: 3,
-    timeLeft: '1j 4h restantes',
-  },
-];
+function formatTimeLeft(deadline) {
+  if (!deadline) return '';
+  const deadlineDate = deadline.toDate ? deadline.toDate() : new Date(deadline);
+  const diffMs = deadlineDate.getTime() - Date.now();
+  if (diffMs <= 0) return 'Terminé';
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  const days = Math.floor(hours / 24);
+  if (days > 0) return `${days}j ${hours % 24}h restantes`;
+  return `${hours}h restantes`;
+}
 
 export default function HomeScreen({ navigation }) {
+  const { uid } = useAuth();
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!uid) return;
+    const unsubscribe = subscribeToMyGroups(uid, (data) => {
+      setGroups(data);
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, [uid]);
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Mes challenges en cours</Text>
+      <View style={styles.container}>
+        <Text style={styles.title}>Mes challenges en cours</Text>
 
-      <FlatList
-        data={MOCK_GROUPS}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ gap: spacing.md }}
-        ListEmptyComponent={
-          <Text style={styles.empty}>
-            Tu ne participes à aucun challenge pour l'instant.
-          </Text>
-        }
-        renderItem={({ item }) => (
-          <Pressable
-            style={styles.card}
-            onPress={() => navigation.navigate('Group', { groupId: item.id })}
-          >
-            <Text style={styles.cardIcon}>{item.icon}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>{item.challengeLabel}</Text>
-              <Text style={styles.cardSubtitle}>
-                Objectif : {item.target} {item.unit} · {item.membersCount} membres
+        <FlatList
+            data={groups}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ gap: spacing.md }}
+            ListEmptyComponent={
+              <Text style={styles.empty}>
+                {loading ? 'Chargement...' : "Tu ne participes à aucun challenge pour l'instant."}
               </Text>
-              <Text style={styles.cardTime}>{item.timeLeft}</Text>
-            </View>
-          </Pressable>
-        )}
-      />
+            }
+            renderItem={({ item }) => (
+                <Pressable
+                    style={styles.card}
+                    onPress={() => navigation.navigate('Group', { groupId: item.id })}
+                >
+                  <Text style={styles.cardIcon}>{item.icon}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle}>{item.label}</Text>
+                    <Text style={styles.cardSubtitle}>
+                      Objectif : {item.target} {item.unit} · {(item.memberIds || []).length} membres
+                    </Text>
+                    <Text style={styles.cardTime}>{formatTimeLeft(item.deadline)}</Text>
+                  </View>
+                </Pressable>
+            )}
+        />
 
-      <View style={styles.actions}>
-        <Pressable
-          style={[styles.button, styles.buttonPrimary]}
-          onPress={() => navigation.navigate('CreateChallenge')}
-        >
-          <Text style={styles.buttonText}>+ Créer un challenge</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.button, styles.buttonSecondary]}
-          onPress={() => navigation.navigate('JoinGroup')}
-        >
-          <Text style={styles.buttonText}>Rejoindre avec un code</Text>
-        </Pressable>
+        <View style={styles.actions}>
+          <Pressable
+              style={[styles.button, styles.buttonPrimary]}
+              onPress={() => navigation.navigate('CreateChallenge')}
+          >
+            <Text style={styles.buttonText}>+ Créer un challenge</Text>
+          </Pressable>
+          <Pressable
+              style={[styles.button, styles.buttonSecondary]}
+              onPress={() => navigation.navigate('JoinGroup')}
+          >
+            <Text style={styles.buttonText}>Rejoindre avec un code</Text>
+          </Pressable>
+        </View>
       </View>
-    </View>
   );
 }
 

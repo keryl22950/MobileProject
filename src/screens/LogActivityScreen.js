@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, Alert } from 'react-native';
 import * as Location from 'expo-location';
 import { colors, spacing } from '../theme';
+import { useAuth } from '../context/AuthContext';
+import { logActivity } from '../services/groups';
 
 // Calcule la distance entre 2 points GPS (formule de Haversine), en km.
 function distanceKm(a, b) {
@@ -16,10 +18,13 @@ function distanceKm(a, b) {
   return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-export default function LogActivityScreen({ route }) {
+export default function LogActivityScreen({ route, navigation }) {
+  const { groupId } = route.params;
+  const { uid, displayName } = useAuth();
   const [manualValue, setManualValue] = useState('');
   const [isTracking, setIsTracking] = useState(false);
   const [trackedDistance, setTrackedDistance] = useState(0);
+  const [saving, setSaving] = useState(false);
   const watchSubscription = useRef(null);
   const lastPoint = useRef(null);
 
@@ -35,15 +40,15 @@ export default function LogActivityScreen({ route }) {
     lastPoint.current = null;
 
     watchSubscription.current = await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.High, distanceInterval: 5, timeInterval: 3000 },
-      (loc) => {
-        const point = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
-        if (lastPoint.current) {
-          const d = distanceKm(lastPoint.current, point);
-          setTrackedDistance((prev) => prev + d);
+        { accuracy: Location.Accuracy.High, distanceInterval: 5, timeInterval: 3000 },
+        (loc) => {
+          const point = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+          if (lastPoint.current) {
+            const d = distanceKm(lastPoint.current, point);
+            setTrackedDistance((prev) => prev + d);
+          }
+          lastPoint.current = point;
         }
-        lastPoint.current = point;
-      }
     );
   }
 
@@ -55,55 +60,66 @@ export default function LogActivityScreen({ route }) {
     setIsTracking(false);
   }
 
+  async function saveValue(value) {
+    if (!value || value <= 0) {
+      Alert.alert('Valeur invalide', 'Indique une valeur supérieure à 0.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await logActivity({ groupId, uid, userName: displayName, value });
+      navigation.goBack();
+    } catch (err) {
+      Alert.alert('Erreur', "Impossible d'enregistrer l'activité : " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function handleSaveManual() {
-    // TODO: écrire un document dans Firestore "groups/{groupId}/activities"
-    // avec { userId, value: Number(manualValue), createdAt, groupId }
-    // puis mettre à jour la progression totale du membre dans "members".
-    console.log('Sauvegarde manuelle :', manualValue, 'groupId:', route.params?.groupId);
+    saveValue(Number(manualValue));
   }
 
   function handleSaveTracked() {
-    // TODO: idem, avec value = trackedDistance (arrondi), + éventuellement
-    // le tracé GPS complet si on veut l'afficher dans ActivityDetailScreen.
-    console.log('Sauvegarde GPS :', trackedDistance.toFixed(2), 'km');
+    saveValue(Number(trackedDistance.toFixed(2)));
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Suivi GPS (course à pied, vélo...)</Text>
-      <View style={styles.gpsCard}>
-        <Text style={styles.gpsValue}>{trackedDistance.toFixed(2)} km</Text>
-        {!isTracking ? (
-          <Pressable style={styles.button} onPress={startTracking}>
-            <Text style={styles.buttonText}>▶ Démarrer le suivi</Text>
-          </Pressable>
-        ) : (
-          <Pressable style={[styles.button, styles.buttonDanger]} onPress={stopTracking}>
-            <Text style={styles.buttonText}>⏹ Arrêter</Text>
-          </Pressable>
-        )}
-        {!isTracking && trackedDistance > 0 && (
-          <Pressable style={[styles.button, styles.buttonPrimary]} onPress={handleSaveTracked}>
-            <Text style={styles.buttonText}>Enregistrer {trackedDistance.toFixed(2)} km</Text>
-          </Pressable>
-        )}
-      </View>
+      <View style={styles.container}>
+        <Text style={styles.sectionTitle}>Suivi GPS (course à pied, vélo...)</Text>
+        <View style={styles.gpsCard}>
+          <Text style={styles.gpsValue}>{trackedDistance.toFixed(2)} km</Text>
+          {!isTracking ? (
+              <Pressable style={styles.button} onPress={startTracking}>
+                <Text style={styles.buttonText}>▶ Démarrer le suivi</Text>
+              </Pressable>
+          ) : (
+              <Pressable style={[styles.button, styles.buttonDanger]} onPress={stopTracking}>
+                <Text style={styles.buttonText}>⏹ Arrêter</Text>
+              </Pressable>
+          )}
+          {!isTracking && trackedDistance > 0 && (
+              <Pressable style={[styles.button, styles.buttonPrimary]} onPress={handleSaveTracked}>
+                <Text style={styles.buttonText}>Enregistrer {trackedDistance.toFixed(2)} km</Text>
+              </Pressable>
+          )}
+        </View>
 
-      <Text style={styles.sectionTitle}>Ou saisie manuelle</Text>
-      <View style={styles.manualCard}>
-        <TextInput
-          style={styles.input}
-          keyboardType="numeric"
-          placeholder="Ex : 12"
-          placeholderTextColor={colors.muted}
-          value={manualValue}
-          onChangeText={setManualValue}
-        />
-        <Pressable style={[styles.button, styles.buttonPrimary]} onPress={handleSaveManual}>
-          <Text style={styles.buttonText}>Enregistrer</Text>
-        </Pressable>
+        <Text style={styles.sectionTitle}>Ou saisie manuelle</Text>
+        <View style={styles.manualCard}>
+          <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              placeholder="Ex : 12"
+              placeholderTextColor={colors.muted}
+              value={manualValue}
+              onChangeText={setManualValue}
+          />
+          <Pressable style={[styles.button, styles.buttonPrimary]} onPress={handleSaveManual}>
+            <Text style={styles.buttonText}>Enregistrer</Text>
+          </Pressable>
+        </View>
       </View>
-    </View>
   );
 }
 

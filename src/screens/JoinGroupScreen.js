@@ -1,37 +1,50 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { colors, spacing } from '../theme';
+import { useAuth } from '../context/AuthContext';
+import { joinGroupByCode } from '../services/groups';
 
 export default function JoinGroupScreen({ navigation }) {
+  const { uid, displayName } = useAuth();
   const [code, setCode] = useState('');
+  const [joining, setJoining] = useState(false);
 
-  function handleJoin() {
-    // TODO: chercher dans Firestore le groupe dont le champ "inviteCode"
-    // correspond à `code`, y ajouter l'utilisateur courant comme membre,
-    // puis naviguer vers l'écran du groupe.
+  async function handleJoin() {
     if (!code.trim()) return;
-    navigation.replace('Group', { groupId: 'groupe-trouve-via-' + code });
+    setJoining(true);
+    try {
+      const groupId = await joinGroupByCode({ uid, userName: displayName, code });
+      navigation.replace('Group', { groupId });
+    } catch (err) {
+      Alert.alert('Impossible de rejoindre', err.message);
+    } finally {
+      setJoining(false);
+    }
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>Code d'invitation</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Ex : ABC123"
-        placeholderTextColor={colors.muted}
-        autoCapitalize="characters"
-        value={code}
-        onChangeText={setCode}
-      />
-      <Text style={styles.hint}>
-        Demande le code (ou le lien) à la personne qui a créé le challenge.
-      </Text>
+      <View style={styles.container}>
+        <Text style={styles.label}>Code d'invitation</Text>
+        <TextInput
+            style={styles.input}
+            placeholder="Ex : ABC123"
+            placeholderTextColor={colors.muted}
+            autoCapitalize="characters"
+            value={code}
+            onChangeText={setCode}
+        />
+        <Text style={styles.hint}>
+          Demande le code (ou le lien) à la personne qui a créé le challenge.
+        </Text>
 
-      <Pressable style={styles.button} onPress={handleJoin}>
-        <Text style={styles.buttonText}>Rejoindre</Text>
-      </Pressable>
-    </View>
+        <Pressable style={styles.button} onPress={handleJoin} disabled={joining}>
+          {joining ? (
+              <ActivityIndicator color={colors.primaryText} />
+          ) : (
+              <Text style={styles.buttonText}>Rejoindre</Text>
+          )}
+        </Pressable>
+      </View>
   );
 }
 

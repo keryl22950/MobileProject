@@ -1,60 +1,65 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { colors, spacing } from '../theme';
-
-// TODO: remplacer par un onSnapshot Firestore sur
-// "groups/{groupId}/messages", trié par createdAt croissant.
-const MOCK_MESSAGES = [
-  { id: '1', author: 'Léa', text: 'Allez on tient le rythme ! 💪', isMe: false },
-  { id: '2', author: 'Toi', text: "J'ai fait 5km ce matin, ça avance", isMe: true },
-  { id: '3', author: 'Nico', text: 'Je vous rejoins ce soir pour le sprint final', isMe: false },
-];
+import { useAuth } from '../context/AuthContext';
+import { subscribeToMessages, sendMessage } from '../services/groups';
 
 export default function ChatScreen({ route }) {
-  const [messages, setMessages] = useState(MOCK_MESSAGES);
+  const { groupId } = route.params;
+  const { uid, displayName } = useAuth();
+  const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
 
-  function handleSend() {
+  useEffect(() => {
+    const unsubscribe = subscribeToMessages(groupId, setMessages);
+    return unsubscribe;
+  }, [groupId]);
+
+  async function handleSend() {
     if (!text.trim()) return;
-    // TODO: ajouter un document dans Firestore "groups/{groupId}/messages"
-    setMessages((prev) => [
-      ...prev,
-      { id: String(prev.length + 1), author: 'Toi', text, isMe: true },
-    ]);
+    const toSend = text.trim();
     setText('');
+    try {
+      await sendMessage({ groupId, uid, userName: displayName, text: toSend });
+    } catch (err) {
+      console.error("Erreur d'envoi de message :", err);
+    }
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <FlatList
-        data={messages}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: spacing.md, gap: spacing.sm }}
-        renderItem={({ item }) => (
-          <View style={[styles.bubbleRow, item.isMe && styles.bubbleRowMe]}>
-            <View style={[styles.bubble, item.isMe && styles.bubbleMe]}>
-              {!item.isMe && <Text style={styles.author}>{item.author}</Text>}
-              <Text style={styles.text}>{item.text}</Text>
-            </View>
-          </View>
-        )}
-      />
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          placeholder="Écrire un message..."
-          placeholderTextColor={colors.muted}
-          value={text}
-          onChangeText={setText}
+      <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <FlatList
+            data={messages}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ padding: spacing.md, gap: spacing.sm }}
+            renderItem={({ item }) => {
+              const isMe = item.userId === uid;
+              return (
+                  <View style={[styles.bubbleRow, isMe && styles.bubbleRowMe]}>
+                    <View style={[styles.bubble, isMe && styles.bubbleMe]}>
+                      {!isMe && <Text style={styles.author}>{item.userName}</Text>}
+                      <Text style={styles.text}>{item.text}</Text>
+                    </View>
+                  </View>
+              );
+            }}
         />
-        <Pressable style={styles.sendButton} onPress={handleSend}>
-          <Text style={styles.sendText}>➤</Text>
-        </Pressable>
-      </View>
-    </KeyboardAvoidingView>
+        <View style={styles.inputRow}>
+          <TextInput
+              style={styles.input}
+              placeholder="Écrire un message..."
+              placeholderTextColor={colors.muted}
+              value={text}
+              onChangeText={setText}
+          />
+          <Pressable style={styles.sendButton} onPress={handleSend}>
+            <Text style={styles.sendText}>➤</Text>
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
   );
 }
 
