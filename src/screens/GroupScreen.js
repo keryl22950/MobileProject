@@ -60,18 +60,22 @@ export default function GroupScreen({ navigation, route }) {
             ListEmptyComponent={<Text style={styles.empty}>Aucun groupement pour l'instant.</Text>}
             renderItem={({ item }) => {
               const period = getCurrentPeriod(item);
+              let subtitle;
+              if (item.status === 'pending') {
+                subtitle = 'En attente de démarrage';
+              } else if (period?.notStarted) {
+                subtitle = `Débute le ${period.periodEnd.toLocaleDateString('fr-FR')} à ${period.periodEnd.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+              } else if (item.recurring) {
+                subtitle = `Récurrent · période #${period.periodIndex + 1}`;
+              } else {
+                subtitle = 'Ponctuel · en cours';
+              }
               return (
                   <Pressable style={styles.card} onPress={() => navigation.navigate('Groupement', { groupId, groupementId: item.id })}>
                     <Text style={styles.cardIcon}>{item.recurring ? '🔁' : '📅'}</Text>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.cardTitle}>{item.name}</Text>
-                      <Text style={styles.cardSubtitle}>
-                        {item.status === 'pending'
-                            ? 'En attente de démarrage'
-                            : item.recurring
-                                ? `Récurrent · période #${period ? period.periodIndex + 1 : 1}`
-                                : 'Ponctuel · en cours'}
-                      </Text>
+                      <Text style={styles.cardSubtitle}>{subtitle}</Text>
                     </View>
                   </Pressable>
               );

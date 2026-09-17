@@ -1,7 +1,7 @@
 import { collection, doc, addDoc, updateDoc, onSnapshot, orderBy, query, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 
-export async function createGroupement({ groupId, createdBy, name, recurring, recurrenceHours, durationHours }) {
+export async function createGroupement({ groupId, createdBy, name, recurring, recurrenceHours, durationHours, startedAt }) {
     const base = {
         name,
         recurring,
@@ -11,11 +11,12 @@ export async function createGroupement({ groupId, createdBy, name, recurring, re
         createdAt: serverTimestamp(),
     };
 
-    // Un groupement récurrent démarre tout de suite (il cycle indéfiniment).
-    // Un groupement ponctuel reste "en attente" jusqu'à ce qu'un admin appuie sur Start.
     if (recurring) {
+        // L'admin choisit quand démarre la toute première période (peut être
+        // dans le futur, ex : "dimanche prochain à minuit"). Les périodes
+        // suivantes s'enchaînent automatiquement à partir de cette date.
         base.status = 'active';
-        base.startedAt = serverTimestamp();
+        base.startedAt = startedAt;
     } else {
         base.status = 'pending';
         base.startedAt = null;
@@ -47,8 +48,9 @@ export function subscribeToGroupement(groupId, groupementId, callback) {
     });
 }
 
-// Calcule la période actuelle (P0 pour un groupement ponctuel, P0/P1/P2... pour un
-// récurrent). Renvoie null si le groupement ponctuel n'a pas encore été démarré.
+// Calcule la période actuelle. Cas particuliers :
+// - non récurrent pas encore démarré → null
+// - récurrent dont la date de départ est dans le futur → { notStarted: true, periodEnd: <date de départ> }
 export function getCurrentPeriod(groupement) {
     if (!groupement || !groupement.startedAt) return null;
     const startedAt = groupement.startedAt.toDate
@@ -56,6 +58,10 @@ export function getCurrentPeriod(groupement) {
         : new Date(groupement.startedAt);
     const periodLengthHours = groupement.recurring ? groupement.recurrenceHours : groupement.durationHours;
     const periodLengthMs = periodLengthHours * 60 * 60 * 1000;
+
+    if (Date.now() < startedAt.getTime()) {
+        return { periodKey: null, periodIndex: -1, periodStart: null, periodEnd: startedAt, notStarted: true };
+    }
 
     if (!groupement.recurring) {
         return {
@@ -67,7 +73,7 @@ export function getCurrentPeriod(groupement) {
     }
 
     const elapsed = Date.now() - startedAt.getTime();
-    const periodIndex = Math.max(0, Math.floor(elapsed / periodLengthMs));
+    const periodIndex = Math.floor(elapsed / periodLengthMs);
     const periodStart = new Date(startedAt.getTime() + periodIndex * periodLengthMs);
     return {
         periodKey: `P${periodIndex}`,

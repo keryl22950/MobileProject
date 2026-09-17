@@ -5,16 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { subscribeToMembers } from '../services/groups';
 import { subscribeToGroupement, startGroupement, getCurrentPeriod } from '../services/groupements';
 import { subscribeToChallenges } from '../services/challenges';
-
-function formatTimeLeft(periodEnd) {
-    if (!periodEnd) return '';
-    const diffMs = periodEnd.getTime() - Date.now();
-    if (diffMs <= 0) return 'Terminé';
-    const hours = Math.floor(diffMs / (1000 * 60 * 60));
-    const days = Math.floor(hours / 24);
-    if (days > 0) return `${days}j ${hours % 24}h restantes`;
-    return `${hours}h restantes`;
-}
+import Countdown from '../components/Countdown';
 
 export default function GroupementScreen({ navigation, route }) {
     const { groupId, groupementId } = route.params;
@@ -51,19 +42,25 @@ export default function GroupementScreen({ navigation, route }) {
         }
     }
 
+    let countdownLabel = null;
+    let countdownTarget = null;
+    if (period?.notStarted) {
+        countdownLabel = 'Démarre le ' + period.periodEnd.toLocaleDateString('fr-FR') + ' à ' + period.periodEnd.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        countdownTarget = period.periodEnd;
+    } else if (period) {
+        countdownLabel = groupement.recurring ? `Période #${period.periodIndex + 1} — temps restant` : 'Temps restant';
+        countdownTarget = period.periodEnd;
+    }
+
     return (
         <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.title}>{groupement.name}</Text>
-                <Text style={styles.subtitle}>
-                    {groupement.recurring ? `Récurrent · période #${period ? period.periodIndex + 1 : 1}` : 'Ponctuel'}
-                </Text>
-                {isPending ? (
-                    <Text style={styles.pending}>En attente de démarrage</Text>
-                ) : (
-                    <Text style={styles.timeLeft}>⏳ {formatTimeLeft(period?.periodEnd)}</Text>
-                )}
+                <Text style={styles.subtitle}>{groupement.recurring ? 'Récurrent' : 'Ponctuel'}</Text>
+                {isPending && <Text style={styles.pending}>En attente de démarrage</Text>}
             </View>
+
+            {countdownTarget && <Countdown target={countdownTarget} label={countdownLabel} />}
 
             {isPending && isAdmin && (
                 <Pressable style={styles.startButton} onPress={handleStart} disabled={starting}>
@@ -92,10 +89,10 @@ export default function GroupementScreen({ navigation, route }) {
                 renderItem={({ item }) => (
                     <Pressable
                         style={styles.challengeCard}
-                        disabled={isPending}
                         onPress={() => navigation.navigate('Challenge', {
                             groupId, groupementId, challengeId: item.id,
-                            periodKey: period?.periodKey, periodEnd: period?.periodEnd?.toISOString(),
+                            periodKey: period && !period.notStarted ? period.periodKey : undefined,
+                            periodEnd: period && !period.notStarted ? period.periodEnd?.toISOString() : undefined,
                         })}
                     >
                         <Text style={styles.challengeIcon}>{item.icon}</Text>
@@ -107,7 +104,7 @@ export default function GroupementScreen({ navigation, route }) {
                 )}
             />
 
-            {isAdmin && !isPending && (
+            {isAdmin && (
                 <Pressable style={[styles.button, styles.buttonPrimary, { marginTop: spacing.md }]} onPress={() => navigation.navigate('CreateChallenge', { groupId, groupementId })}>
                     <Text style={styles.buttonText}>+ Nouveau challenge</Text>
                 </Pressable>
@@ -118,11 +115,10 @@ export default function GroupementScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, padding: spacing.md },
-    header: { marginBottom: spacing.md },
+    header: { alignItems: 'center' },
     title: { color: colors.text, fontSize: 20, fontWeight: '700' },
     subtitle: { color: colors.muted, fontSize: 12, marginTop: 2 },
     pending: { color: colors.danger, fontSize: 13, fontWeight: '600', marginTop: 4 },
-    timeLeft: { color: colors.primary, fontSize: 13, fontWeight: '600', marginTop: 4 },
     hint: { color: colors.muted, fontSize: 12, textAlign: 'center', marginBottom: spacing.md },
     startButton: { backgroundColor: colors.success, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: spacing.md },
     actionsRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },

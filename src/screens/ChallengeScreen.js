@@ -22,7 +22,12 @@ export default function ChallengeScreen({ navigation, route }) {
 
   useEffect(() => {
     const u1 = subscribeToChallenge(groupId, groupementId, challengeId, setChallenge);
-    const u2 = subscribeToProgress(groupId, groupementId, challengeId, periodKey, setProgress);
+    let u2 = () => {};
+    if (periodKey) {
+      u2 = subscribeToProgress(groupId, groupementId, challengeId, periodKey, setProgress);
+    } else {
+      setProgress([]);
+    }
     return () => { u1(); u2(); };
   }, [groupId, groupementId, challengeId, periodKey]);
 
@@ -36,35 +41,41 @@ export default function ChallengeScreen({ navigation, route }) {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.challengeTitle}>{challenge.icon} {challenge.label} — {challenge.target} {challenge.unit}</Text>
-          {!readOnly && <Text style={styles.timeLeft}>⏳ {formatTimeLeft(end)}</Text>}
+          {!readOnly && periodKey && <Text style={styles.timeLeft}>⏳ {formatTimeLeft(end)}</Text>}
         </View>
 
-        <Text style={styles.sectionTitle}>Classement{readOnly ? ' (historique)' : ''}</Text>
-        <FlatList
-            data={progress}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={{ gap: spacing.sm }}
-            ListEmptyComponent={<Text style={styles.empty}>Personne n'a encore enregistré d'activité.</Text>}
-            renderItem={({ item, index }) => {
-              const pct = Math.min(100, Math.round(((item.value || 0) / challenge.target) * 100));
-              const isMe = item.id === uid;
-              return (
-                  <View style={[styles.memberRow, isMe && styles.memberRowMe]}>
-                    <Text style={styles.rank}>#{index + 1}</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.memberName}>{item.name}{isMe ? ' (toi)' : ''}</Text>
-                      <View style={styles.progressBarBg}><View style={[styles.progressBarFill, { width: `${pct}%` }]} /></View>
-                    </View>
-                    <Text style={styles.memberValue}>{(item.value || 0).toFixed(1)}/{challenge.target} {challenge.unit}</Text>
-                  </View>
-              );
-            }}
-        />
+        {!periodKey && !readOnly ? (
+            <Text style={styles.empty}>Ce groupement n'a pas encore démarré — reviens une fois qu'il aura débuté !</Text>
+        ) : (
+            <>
+              <Text style={styles.sectionTitle}>Classement{readOnly ? ' (historique)' : ''}</Text>
+              <FlatList
+                  data={progress}
+                  keyExtractor={(item) => item.id}
+                  contentContainerStyle={{ gap: spacing.sm }}
+                  ListEmptyComponent={<Text style={styles.empty}>Personne n'a encore enregistré d'activité.</Text>}
+                  renderItem={({ item, index }) => {
+                    const pct = Math.min(100, Math.round(((item.value || 0) / challenge.target) * 100));
+                    const isMe = item.id === uid;
+                    return (
+                        <View style={[styles.memberRow, isMe && styles.memberRowMe]}>
+                          <Text style={styles.rank}>#{index + 1}</Text>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.memberName}>{item.name}{isMe ? ' (toi)' : ''}</Text>
+                            <View style={styles.progressBarBg}><View style={[styles.progressBarFill, { width: `${pct}%` }]} /></View>
+                          </View>
+                          <Text style={styles.memberValue}>{(item.value || 0).toFixed(1)}/{challenge.target} {challenge.unit}</Text>
+                        </View>
+                    );
+                  }}
+              />
 
-        {!readOnly && (
-            <Pressable style={styles.button} onPress={() => navigation.navigate('LogActivity', { groupId, groupementId, challengeId, periodKey })}>
-              <Text style={styles.buttonText}>+ Enregistrer une activité</Text>
-            </Pressable>
+              {!readOnly && (
+                  <Pressable style={styles.button} onPress={() => navigation.navigate('LogActivity', { groupId, groupementId, challengeId, periodKey })}>
+                    <Text style={styles.buttonText}>+ Enregistrer une activité</Text>
+                  </Pressable>
+              )}
+            </>
         )}
       </View>
   );
@@ -74,7 +85,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: spacing.md },
   header: { marginBottom: spacing.md },
   challengeTitle: { color: colors.text, fontSize: 18, fontWeight: '700' },
-  timeLeft: { color: colors.primary, fontSize: 13, fontWeight: '600', marginTop: 4 }, 
+  timeLeft: { color: colors.primary, fontSize: 13, fontWeight: '600', marginTop: 4 },
   sectionTitle: { color: colors.muted, fontSize: 13, marginBottom: spacing.sm, textTransform: 'uppercase' },
   empty: { color: colors.muted, textAlign: 'center', marginTop: spacing.lg },
   memberRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: 12, padding: spacing.sm, borderWidth: 1, borderColor: colors.border },

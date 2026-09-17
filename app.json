@@ -32,7 +32,8 @@
           "locationAlwaysAndWhenInUsePermission": "L'app utilise ta position pour mesurer la distance parcourue."
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      "@react-native-community/datetimepicker"
     ]
   }
 }
