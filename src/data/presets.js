@@ -76,3 +76,10 @@ export const DURATION_PRESETS = [
   { label: '1 semaine', hours: 24 * 7 },
   { label: 'Personnalisé', hours: null },
 ];
+
+export const RECURRENCE_PRESETS = [
+  { label: 'Chaque jour', hours: 24 },
+  { label: 'Chaque semaine', hours: 168 },
+  { label: 'Chaque mois', hours: 720 },
+  { label: 'Personnalisé', hours: null },
+];

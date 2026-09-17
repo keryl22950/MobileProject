@@ -19,7 +19,7 @@ function distanceKm(a, b) {
 }
 
 export default function LogActivityScreen({ route, navigation }) {
-  const { groupId, challengeId } = route.params;
+  const { groupId, groupementId, challengeId, periodKey } = route.params;
   const { uid, displayName } = useAuth();
   const [manualValue, setManualValue] = useState('');
   const [isTracking, setIsTracking] = useState(false);
@@ -67,7 +67,7 @@ export default function LogActivityScreen({ route, navigation }) {
     }
     setSaving(true);
     try {
-      await logActivity({ groupId, challengeId, uid, userName: displayName, value });
+      await logActivity({ groupId, groupementId, challengeId, periodKey, uid, userName: displayName, value });
       navigation.goBack();
     } catch (err) {
       Alert.alert('Erreur', "Impossible d'enregistrer l'activité : " + err.message);

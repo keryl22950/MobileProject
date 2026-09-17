@@ -1,98 +1,70 @@
-import {
-  collection,
-  doc,
-  addDoc,
-  setDoc,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  increment,
-  limit,
-} from 'firebase/firestore';
+import { collection, doc, addDoc, setDoc, onSnapshot, orderBy, query, serverTimestamp, increment } from 'firebase/firestore';
 import { db } from './firebase';
 
-export async function createChallenge({
-  groupId,
-  createdBy,
-  presetId,
-  label,
-  icon,
-  unit,
-  target,
-  durationHours,
-}) {
-  const deadline = new Date(Date.now() + durationHours * 60 * 60 * 1000);
-
-  const challengeRef = await addDoc(collection(db, 'groups', groupId, 'challenges'), {
-    presetId,
-    label,
-    icon,
-    unit,
-    target,
-    durationHours,
-    deadline,
-    createdBy,
-    createdAt: serverTimestamp(),
-  });
-
-  return challengeRef.id;
+function challengesCol(groupId, groupementId) {
+  return collection(db, 'groups', groupId, 'groupements', groupementId, 'challenges');
+}
+function challengeDoc(groupId, groupementId, challengeId) {
+  return doc(db, 'groups', groupId, 'groupements', groupementId, 'challenges', challengeId);
+}
+function challengeSubCollection(groupId, groupementId, challengeId, ...segments) {
+  return collection(db, 'groups', groupId, 'groupements', groupementId, 'challenges', challengeId, ...segments);
+}
+function challengeSubDoc(groupId, groupementId, challengeId, ...segments) {
+  return doc(db, 'groups', groupId, 'groupements', groupementId, 'challenges', challengeId, ...segments);
 }
 
-// Tous les challenges d'un groupe (en cours ou passés), les plus récents d'abord.
-export function subscribeToChallenges(groupId, callback) {
-  const q = query(collection(db, 'groups', groupId, 'challenges'), orderBy('createdAt', 'desc'));
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+export async function createChallenge({ groupId, groupementId, createdBy, presetId, label, icon, unit, target }) {
+  const ref = await addDoc(challengesCol(groupId, groupementId), {
+    presetId, label, icon, unit, target, createdBy, createdAt: serverTimestamp(),
   });
+  return ref.id;
 }
 
-export function subscribeToChallenge(groupId, challengeId, callback) {
-  return onSnapshot(doc(db, 'groups', groupId, 'challenges', challengeId), (snap) => {
+export function subscribeToChallenges(groupId, groupementId, callback) {
+  const q = query(challengesCol(groupId, groupementId), orderBy('createdAt', 'desc'));
+  return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+}
+
+export function subscribeToChallenge(groupId, groupementId, challengeId, callback) {
+  return onSnapshot(challengeDoc(groupId, groupementId, challengeId), (snap) => {
     if (snap.exists()) callback({ id: snap.id, ...snap.data() });
   });
 }
 
-// Classement d'un challenge précis, triés par progression décroissante.
-export function subscribeToProgress(groupId, challengeId, callback) {
+// Classement de la période en cours (ou d'une période passée pour l'historique).
+export function subscribeToProgress(groupId, groupementId, challengeId, periodKey, callback) {
   const q = query(
-    collection(db, 'groups', groupId, 'challenges', challengeId, 'progress'),
-    orderBy('value', 'desc')
+      challengeSubCollection(groupId, groupementId, challengeId, 'periods', periodKey, 'progress'),
+      orderBy('value', 'desc')
   );
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  });
+  return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
 }
 
-export async function logActivity({ groupId, challengeId, uid, userName, value }) {
-  await addDoc(collection(db, 'groups', groupId, 'challenges', challengeId, 'activities'), {
-    userId: uid,
-    userName,
-    value,
-    createdAt: serverTimestamp(),
+// Total cumulé, toutes périodes confondues (pour l'écran Statistiques).
+export function subscribeToCumulative(groupId, groupementId, challengeId, callback) {
+  const q = query(
+      challengeSubCollection(groupId, groupementId, challengeId, 'cumulative'),
+      orderBy('value', 'desc')
+  );
+  return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+}
+
+export async function logActivity({ groupId, groupementId, challengeId, periodKey, uid, userName, value }) {
+  await addDoc(challengeSubCollection(groupId, groupementId, challengeId, 'periods', periodKey, 'activities'), {
+    userId: uid, userName, value, createdAt: serverTimestamp(),
   });
 
-  // setDoc + merge crée le document de progression au premier ajout, ou
-  // l'incrémente s'il existe déjà. On stocke le nom directement ici pour
-  // afficher le classement sans avoir à recroiser avec la liste des membres.
   await setDoc(
-    doc(db, 'groups', groupId, 'challenges', challengeId, 'progress', uid),
-    {
-      name: userName,
-      value: increment(value),
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
+      challengeSubDoc(groupId, groupementId, challengeId, 'periods', periodKey, 'progress', uid),
+      { name: userName, value: increment(value), updatedAt: serverTimestamp() },
+      { merge: true }
   );
-}
 
-export function subscribeToActivities(groupId, challengeId, callback) {
-  const q = query(
-    collection(db, 'groups', groupId, 'challenges', challengeId, 'activities'),
-    orderBy('createdAt', 'desc'),
-    limit(50)
+  // Alimente le cumul global en parallèle, sans jamais repartir à zéro.
+  await setDoc(
+      challengeSubDoc(groupId, groupementId, challengeId, 'cumulative', uid),
+      { name: userName, value: increment(value), updatedAt: serverTimestamp() },
+      { merge: true }
   );
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  });
 }
