@@ -22,36 +22,57 @@ suivi GPS pour les activités type course à pied.
 ## Ce qui est fait dans ce squelette
 
 - Navigation complète entre les écrans (React Navigation)
-- Écran d'accueil listant les challenges en cours (données factices pour l'instant)
+- Auth anonyme Firebase + prompt de prénom au premier lancement (stocké en local)
+- Écran d'accueil listant **tes vrais groupes**, avec deadline calculée en direct
 - Création de challenge : presets (course, pompes, vélo, lecture, jeu vidéo...)
-  + durée (12h/24h/48h/semaine/custom) + objectif chiffré
-- Rejoindre un groupe via un code
-- Écran de groupe avec classement / barres de progression
+  + durée (12h/24h/48h/semaine/custom) + objectif chiffré → écrit dans Firestore
+- Rejoindre un groupe via un code → recherché dans Firestore
+- Écran de groupe avec classement **en temps réel** (mis à jour instantanément
+  pour tout le monde dès qu'un membre progresse)
 - Enregistrement d'activité : saisie manuelle **ou** suivi GPS en direct
-  (calcul de distance parcourue avec `expo-location`)
-- Chat de groupe (UI fonctionnelle, données factices)
-- Détail d'une activité façon Strava (emplacement prévu pour une carte)
+  (calcul de distance parcourue avec `expo-location`) → écrit dans Firestore
+- Chat de groupe **en temps réel**
+- Détail d'une activité façon Strava (emplacement prévu pour une carte —
+  encore avec des données d'exemple, pas branché sur une activité réelle)
 
-## Ce qu'il reste à connecter (marqué `// TODO` dans le code)
+## Structure des données dans Firestore
 
-Tout le stockage réel des données doit se faire via **Firebase** :
-
-1. Créer un projet gratuit sur https://console.firebase.google.com
-2. Activer **Firestore Database** et **Authentication** (méthode "Anonyme")
-3. Copier la config du projet dans `src/services/firebase.js`
-4. Brancher les écrans sur Firestore (chaque `// TODO` indique quoi faire)
-
-Structure de données Firestore suggérée :
 ```
 groups/{groupId}
-  - challengeType, target, unit, deadline, inviteCode
+  - label, icon, unit, target, durationHours, deadline
+  - inviteCode, ownerId, memberIds: [uid, ...]
   members/{userId}
-    - name, progress
+    - name, progress, joinedAt
   activities/{activityId}
-    - userId, value, createdAt, gpsTrack (optionnel)
+    - userId, userName, value, createdAt
   messages/{messageId}
-    - userId, text, createdAt
+    - userId, userName, text, createdAt
 ```
+
+## Règles de sécurité Firestore (mode test)
+
+Le "mode test" de Firestore expire après 30 jours. Dans la console Firebase
+(Firestore Database → Règles), tu peux mettre ceci pour un prototype accessible
+uniquement aux personnes connectées (même anonymement) :
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
+
+## Ce qu'il reste à faire
+
+- Carte du parcours GPS avec `react-native-maps` (dans ActivityDetailScreen)
+- Notifications push (deadline proche, un membre vient d'avancer)
+- Lier chaque activité affichée dans le classement au détail réel (actuellement
+  ActivityDetailScreen affiche encore un exemple statique)
+- Historique des challenges terminés
 
 ## Prochaines étapes possibles
 

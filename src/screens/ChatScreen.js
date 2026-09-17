@@ -27,39 +27,39 @@ export default function ChatScreen({ route }) {
   }
 
   return (
-      <KeyboardAvoidingView
-          style={styles.container}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <FlatList
-            data={messages}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={{ padding: spacing.md, gap: spacing.sm }}
-            renderItem={({ item }) => {
-              const isMe = item.userId === uid;
-              return (
-                  <View style={[styles.bubbleRow, isMe && styles.bubbleRowMe]}>
-                    <View style={[styles.bubble, isMe && styles.bubbleMe]}>
-                      {!isMe && <Text style={styles.author}>{item.userName}</Text>}
-                      <Text style={styles.text}>{item.text}</Text>
-                    </View>
-                  </View>
-              );
-            }}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <FlatList
+        data={messages}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ padding: spacing.md, gap: spacing.sm }}
+        renderItem={({ item }) => {
+          const isMe = item.userId === uid;
+          return (
+            <View style={[styles.bubbleRow, isMe && styles.bubbleRowMe]}>
+              <View style={[styles.bubble, isMe && styles.bubbleMe]}>
+                {!isMe && <Text style={styles.author}>{item.userName}</Text>}
+                <Text style={styles.text}>{item.text}</Text>
+              </View>
+            </View>
+          );
+        }}
+      />
+      <View style={styles.inputRow}>
+        <TextInput
+          style={styles.input}
+          placeholder="Écrire un message..."
+          placeholderTextColor={colors.muted}
+          value={text}
+          onChangeText={setText}
         />
-        <View style={styles.inputRow}>
-          <TextInput
-              style={styles.input}
-              placeholder="Écrire un message..."
-              placeholderTextColor={colors.muted}
-              value={text}
-              onChangeText={setText}
-          />
-          <Pressable style={styles.sendButton} onPress={handleSend}>
-            <Text style={styles.sendText}>➤</Text>
-          </Pressable>
-        </View>
-      </KeyboardAvoidingView>
+        <Pressable style={styles.sendButton} onPress={handleSend}>
+          <Text style={styles.sendText}>➤</Text>
+        </Pressable>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 

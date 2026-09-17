@@ -3,10 +3,11 @@ import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert, Activi
 import { colors, spacing } from '../theme';
 import { CHALLENGE_PRESETS, DURATION_PRESETS } from '../data/presets';
 import { useAuth } from '../context/AuthContext';
-import { createGroup } from '../services/groups';
+import { createChallenge } from '../services/challenges';
 
-export default function CreateChallengeScreen({ navigation }) {
-  const { uid, displayName } = useAuth();
+export default function CreateChallengeScreen({ navigation, route }) {
+  const { groupId } = route.params;
+  const { uid } = useAuth();
   const [selectedPreset, setSelectedPreset] = useState(CHALLENGE_PRESETS[0]);
   const [selectedDuration, setSelectedDuration] = useState(DURATION_PRESETS[1]); // 24h par défaut
   const [target, setTarget] = useState(String(CHALLENGE_PRESETS[0].defaultTarget));
@@ -37,9 +38,9 @@ export default function CreateChallengeScreen({ navigation }) {
 
     setCreating(true);
     try {
-      const groupId = await createGroup({
-        uid,
-        userName: displayName,
+      const challengeId = await createChallenge({
+        groupId,
+        createdBy: uid,
         presetId: selectedPreset.id,
         label: isCustom ? customName.trim() : selectedPreset.label,
         icon: selectedPreset.icon,
@@ -47,7 +48,7 @@ export default function CreateChallengeScreen({ navigation }) {
         target: numericTarget,
         durationHours: selectedDuration.hours,
       });
-      navigation.replace('Group', { groupId });
+      navigation.replace('Challenge', { groupId, challengeId });
     } catch (err) {
       Alert.alert('Erreur', "Impossible de créer le challenge : " + err.message);
     } finally {
@@ -56,75 +57,75 @@ export default function CreateChallengeScreen({ navigation }) {
   }
 
   return (
-      <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing.md, gap: spacing.lg }}>
-        <View>
-          <Text style={styles.sectionTitle}>Type de challenge</Text>
-          <View style={styles.grid}>
-            {CHALLENGE_PRESETS.map((preset) => (
-                <Pressable
-                    key={preset.id}
-                    onPress={() => handleSelectPreset(preset)}
-                    style={[
-                      styles.presetItem,
-                      selectedPreset.id === preset.id && styles.presetItemSelected,
-                    ]}
-                >
-                  <Text style={styles.presetIcon}>{preset.icon}</Text>
-                  <Text style={styles.presetLabel}>{preset.label}</Text>
-                </Pressable>
-            ))}
-          </View>
+    <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing.md, gap: spacing.lg }}>
+      <View>
+        <Text style={styles.sectionTitle}>Type de challenge</Text>
+        <View style={styles.grid}>
+          {CHALLENGE_PRESETS.map((preset) => (
+            <Pressable
+              key={preset.id}
+              onPress={() => handleSelectPreset(preset)}
+              style={[
+                styles.presetItem,
+                selectedPreset.id === preset.id && styles.presetItemSelected,
+              ]}
+            >
+              <Text style={styles.presetIcon}>{preset.icon}</Text>
+              <Text style={styles.presetLabel}>{preset.label}</Text>
+            </Pressable>
+          ))}
         </View>
+      </View>
 
-        {isCustom && (
-            <View>
-              <Text style={styles.sectionTitle}>Nom du challenge</Text>
-              <TextInput
-                  style={styles.input}
-                  placeholder="Ex : Nombre de pages de BD lues"
-                  placeholderTextColor={colors.muted}
-                  value={customName}
-                  onChangeText={setCustomName}
-              />
-            </View>
-        )}
-
+      {isCustom && (
         <View>
-          <Text style={styles.sectionTitle}>Objectif ({selectedPreset.unit})</Text>
+          <Text style={styles.sectionTitle}>Nom du challenge</Text>
           <TextInput
-              style={styles.input}
-              keyboardType="numeric"
-              value={target}
-              onChangeText={setTarget}
+            style={styles.input}
+            placeholder="Ex : Nombre de pages de BD lues"
+            placeholderTextColor={colors.muted}
+            value={customName}
+            onChangeText={setCustomName}
           />
         </View>
+      )}
 
-        <View>
-          <Text style={styles.sectionTitle}>Durée du challenge</Text>
-          <View style={styles.row}>
-            {DURATION_PRESETS.map((d) => (
-                <Pressable
-                    key={d.label}
-                    onPress={() => setSelectedDuration(d)}
-                    style={[
-                      styles.chip,
-                      selectedDuration.label === d.label && styles.chipSelected,
-                    ]}
-                >
-                  <Text style={styles.chipText}>{d.label}</Text>
-                </Pressable>
-            ))}
-          </View>
+      <View>
+        <Text style={styles.sectionTitle}>Objectif ({selectedPreset.unit})</Text>
+        <TextInput
+          style={styles.input}
+          keyboardType="numeric"
+          value={target}
+          onChangeText={setTarget}
+        />
+      </View>
+
+      <View>
+        <Text style={styles.sectionTitle}>Durée du challenge</Text>
+        <View style={styles.row}>
+          {DURATION_PRESETS.map((d) => (
+            <Pressable
+              key={d.label}
+              onPress={() => setSelectedDuration(d)}
+              style={[
+                styles.chip,
+                selectedDuration.label === d.label && styles.chipSelected,
+              ]}
+            >
+              <Text style={styles.chipText}>{d.label}</Text>
+            </Pressable>
+          ))}
         </View>
+      </View>
 
-        <Pressable style={styles.createButton} onPress={handleCreate} disabled={creating}>
-          {creating ? (
-              <ActivityIndicator color={colors.primaryText} />
-          ) : (
-              <Text style={styles.createButtonText}>Créer le challenge</Text>
-          )}
-        </Pressable>
-      </ScrollView>
+      <Pressable style={styles.createButton} onPress={handleCreate} disabled={creating}>
+        {creating ? (
+          <ActivityIndicator color={colors.primaryText} />
+        ) : (
+          <Text style={styles.createButtonText}>Créer le challenge</Text>
+        )}
+      </Pressable>
+    </ScrollView>
   );
 }
 

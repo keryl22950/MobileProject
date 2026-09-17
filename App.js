@@ -8,30 +8,30 @@ import NamePromptScreen from './src/screens/NamePromptScreen';
 import { colors } from './src/theme';
 
 function Gate() {
-    const { ready, displayName } = useAuth();
+  const { ready, displayName } = useAuth();
 
-    if (!ready) {
-        return (
-            <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
-                <ActivityIndicator color={colors.primary} size="large" />
-            </View>
-        );
-    }
+  if (!ready) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={colors.primary} size="large" />
+      </View>
+    );
+  }
 
-    if (!displayName) {
-        return <NamePromptScreen />;
-    }
+  if (!displayName) {
+    return <NamePromptScreen />;
+  }
 
-    return <AppNavigator />;
+  return <AppNavigator />;
 }
 
 export default function App() {
-    return (
-        <AuthProvider>
-            <NavigationContainer>
-                <StatusBar style="light" />
-                <Gate />
-            </NavigationContainer>
-        </AuthProvider>
-    );
+  return (
+    <AuthProvider>
+      <NavigationContainer>
+        <StatusBar style="light" />
+        <Gate />
+      </NavigationContainer>
+    </AuthProvider>
+  );
 }

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, Pressable, Share, ActivityIndicator }
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { subscribeToGroup, subscribeToMembers } from '../services/groups';
+import { subscribeToChallenges } from '../services/challenges';
 
 function formatTimeLeft(deadline) {
   if (!deadline) return '';
@@ -20,99 +21,99 @@ export default function GroupScreen({ navigation, route }) {
   const { uid } = useAuth();
   const [group, setGroup] = useState(null);
   const [members, setMembers] = useState([]);
+  const [challenges, setChallenges] = useState([]);
 
   useEffect(() => {
     const unsubGroup = subscribeToGroup(groupId, setGroup);
     const unsubMembers = subscribeToMembers(groupId, setMembers);
+    const unsubChallenges = subscribeToChallenges(groupId, setChallenges);
     return () => {
       unsubGroup();
       unsubMembers();
+      unsubChallenges();
     };
   }, [groupId]);
 
   if (!group) {
     return (
-        <View style={[styles.container, { justifyContent: 'center' }]}>
-          <ActivityIndicator color={colors.primary} size="large" />
-        </View>
+      <View style={[styles.container, { justifyContent: 'center' }]}>
+        <ActivityIndicator color={colors.primary} size="large" />
+      </View>
     );
   }
 
+  const me = members.find((m) => m.id === uid);
+  const isAdmin = me?.role === 'creator' || me?.role === 'admin';
+
   function handleShare() {
     Share.share({
-      message: `Rejoins mon challenge "${group.label}" sur l'app avec le code ${group.inviteCode} !`,
+      message: `Rejoins mon groupe "${group.name}" sur l'app avec le code ${group.inviteCode} !`,
     });
   }
 
   return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.challengeTitle}>
-            {group.icon} {group.label} — {group.target} {group.unit}
-          </Text>
-          <Text style={styles.timeLeft}>⏳ {formatTimeLeft(group.deadline)}</Text>
-          <Text style={styles.code}>Code : {group.inviteCode}</Text>
-        </View>
-
-        <Text style={styles.sectionTitle}>Classement du groupe</Text>
-        <FlatList
-            data={members}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={{ gap: spacing.sm }}
-            renderItem={({ item, index }) => {
-              const pct = Math.min(100, Math.round(((item.progress || 0) / group.target) * 100));
-              const isMe = item.id === uid;
-              return (
-                  <View style={[styles.memberRow, isMe && styles.memberRowMe]}>
-                    <Text style={styles.rank}>#{index + 1}</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.memberName}>{item.name}{isMe ? ' (toi)' : ''}</Text>
-                      <View style={styles.progressBarBg}>
-                        <View style={[styles.progressBarFill, { width: `${pct}%` }]} />
-                      </View>
-                    </View>
-                    <Text style={styles.memberValue}>
-                      {(item.progress || 0).toFixed(1)}/{group.target} {group.unit}
-                    </Text>
-                  </View>
-              );
-            }}
-        />
-
-        <View style={styles.actions}>
-          <Pressable
-              style={[styles.button, styles.buttonPrimary]}
-              onPress={() => navigation.navigate('LogActivity', { groupId })}
-          >
-            <Text style={styles.buttonText}>+ Enregistrer une activité</Text>
-          </Pressable>
-          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <Pressable
-                style={[styles.button, styles.buttonSecondary, { flex: 1 }]}
-                onPress={() => navigation.navigate('Chat', { groupId })}
-            >
-              <Text style={styles.buttonText}>💬 Chat</Text>
-            </Pressable>
-            <Pressable
-                style={[styles.button, styles.buttonSecondary, { flex: 1 }]}
-                onPress={handleShare}
-            >
-              <Text style={styles.buttonText}>📤 Inviter</Text>
-            </Pressable>
-          </View>
-        </View>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.groupTitle}>👥 {group.name}</Text>
+        <Text style={styles.code}>Code : {group.inviteCode} · {members.length} membres</Text>
       </View>
+
+      <View style={styles.topActions}>
+        <Pressable style={[styles.button, styles.buttonSecondary, { flex: 1 }]} onPress={() => navigation.navigate('Members', { groupId })}>
+          <Text style={styles.buttonText}>👤 Membres</Text>
+        </Pressable>
+        <Pressable style={[styles.button, styles.buttonSecondary, { flex: 1 }]} onPress={() => navigation.navigate('Chat', { groupId })}>
+          <Text style={styles.buttonText}>💬 Chat</Text>
+        </Pressable>
+        <Pressable style={[styles.button, styles.buttonSecondary, { flex: 1 }]} onPress={handleShare}>
+          <Text style={styles.buttonText}>📤 Inviter</Text>
+        </Pressable>
+      </View>
+
+      <Text style={styles.sectionTitle}>Challenges du groupe</Text>
+      <FlatList
+        data={challenges}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ gap: spacing.sm }}
+        ListEmptyComponent={
+          <Text style={styles.empty}>Aucun challenge pour l'instant.</Text>
+        }
+        renderItem={({ item }) => (
+          <Pressable
+            style={styles.challengeCard}
+            onPress={() => navigation.navigate('Challenge', { groupId, challengeId: item.id })}
+          >
+            <Text style={styles.challengeIcon}>{item.icon}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.challengeLabel}>{item.label}</Text>
+              <Text style={styles.challengeSub}>Objectif : {item.target} {item.unit}</Text>
+            </View>
+            <Text style={styles.challengeTime}>{formatTimeLeft(item.deadline)}</Text>
+          </Pressable>
+        )}
+      />
+
+      {isAdmin && (
+        <Pressable
+          style={[styles.button, styles.buttonPrimary, { marginTop: spacing.md }]}
+          onPress={() => navigation.navigate('CreateChallenge', { groupId })}
+        >
+          <Text style={styles.buttonText}>+ Nouveau challenge</Text>
+        </Pressable>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: spacing.md },
   header: { marginBottom: spacing.md },
-  challengeTitle: { color: colors.text, fontSize: 18, fontWeight: '700' },
-  timeLeft: { color: colors.primary, fontSize: 13, fontWeight: '600', marginTop: 4 },
+  groupTitle: { color: colors.text, fontSize: 20, fontWeight: '700' },
   code: { color: colors.muted, fontSize: 12, marginTop: 4 },
+  topActions: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   sectionTitle: { color: colors.muted, fontSize: 13, marginBottom: spacing.sm, textTransform: 'uppercase' },
-  memberRow: {
+  empty: { color: colors.muted, textAlign: 'center', marginTop: spacing.lg },
+  challengeCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
@@ -122,15 +123,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  memberRowMe: { borderColor: colors.primary },
-  rank: { color: colors.muted, width: 28, fontWeight: '700' },
-  memberName: { color: colors.text, fontSize: 14, fontWeight: '600', marginBottom: 4 },
-  progressBarBg: { height: 6, backgroundColor: colors.border, borderRadius: 3, overflow: 'hidden' },
-  progressBarFill: { height: 6, backgroundColor: colors.primary },
-  memberValue: { color: colors.muted, fontSize: 12 },
-  actions: { gap: spacing.sm, marginTop: spacing.md },
-  button: { paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  challengeIcon: { fontSize: 26 },
+  challengeLabel: { color: colors.text, fontSize: 14, fontWeight: '600' },
+  challengeSub: { color: colors.muted, fontSize: 12, marginTop: 2 },
+  challengeTime: { color: colors.primary, fontSize: 11, fontWeight: '600' },
+  button: { paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
   buttonPrimary: { backgroundColor: colors.primary },
   buttonSecondary: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
-  buttonText: { color: colors.primaryText, fontWeight: '600', fontSize: 14 },
+  buttonText: { color: colors.primaryText, fontWeight: '600', fontSize: 13 },
 });

@@ -8,7 +8,9 @@
     "splash": {
       "backgroundColor": "#111827"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tonpseudo.challengeapp",
@@ -18,7 +20,10 @@
     },
     "android": {
       "package": "com.tonpseudo.challengeapp",
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "plugins": [
       [
@@ -26,7 +31,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "L'app utilise ta position pour mesurer la distance parcourue."
         }
-      ]
+      ],
+      "expo-status-bar"
     ]
   }
 }

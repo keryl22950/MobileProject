@@ -5,7 +5,13 @@
 
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import {
+  initializeAuth,
+  getReactNativePersistence,
+  signInAnonymously,
+  onAuthStateChanged,
+} from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
   apiKey: "AIzaSyB4smO8Ks72CYPxj6sx_TaiUseGJlc09Yg",
@@ -20,7 +26,13 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
-export const auth = getAuth(app);
+
+// Sur React Native, il faut explicitement dire à Firebase Auth d'utiliser
+// AsyncStorage pour se souvenir de la session (sinon il essaie d'utiliser
+// le localStorage du navigateur, qui n'existe pas ici, et plante).
+export const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage),
+});
 
 // Connecte l'utilisateur anonymement dès le lancement de l'app.
 // Ça permet d'avoir un identifiant unique par personne sans système

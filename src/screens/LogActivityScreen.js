@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TextInput, Pressable, Alert } from 'react-nativ
 import * as Location from 'expo-location';
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
-import { logActivity } from '../services/groups';
+import { logActivity } from '../services/challenges';
 
 // Calcule la distance entre 2 points GPS (formule de Haversine), en km.
 function distanceKm(a, b) {
@@ -19,7 +19,7 @@ function distanceKm(a, b) {
 }
 
 export default function LogActivityScreen({ route, navigation }) {
-  const { groupId } = route.params;
+  const { groupId, challengeId } = route.params;
   const { uid, displayName } = useAuth();
   const [manualValue, setManualValue] = useState('');
   const [isTracking, setIsTracking] = useState(false);
@@ -40,15 +40,15 @@ export default function LogActivityScreen({ route, navigation }) {
     lastPoint.current = null;
 
     watchSubscription.current = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.High, distanceInterval: 5, timeInterval: 3000 },
-        (loc) => {
-          const point = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
-          if (lastPoint.current) {
-            const d = distanceKm(lastPoint.current, point);
-            setTrackedDistance((prev) => prev + d);
-          }
-          lastPoint.current = point;
+      { accuracy: Location.Accuracy.High, distanceInterval: 5, timeInterval: 3000 },
+      (loc) => {
+        const point = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+        if (lastPoint.current) {
+          const d = distanceKm(lastPoint.current, point);
+          setTrackedDistance((prev) => prev + d);
         }
+        lastPoint.current = point;
+      }
     );
   }
 
@@ -67,7 +67,7 @@ export default function LogActivityScreen({ route, navigation }) {
     }
     setSaving(true);
     try {
-      await logActivity({ groupId, uid, userName: displayName, value });
+      await logActivity({ groupId, challengeId, uid, userName: displayName, value });
       navigation.goBack();
     } catch (err) {
       Alert.alert('Erreur', "Impossible d'enregistrer l'activité : " + err.message);
@@ -85,41 +85,41 @@ export default function LogActivityScreen({ route, navigation }) {
   }
 
   return (
-      <View style={styles.container}>
-        <Text style={styles.sectionTitle}>Suivi GPS (course à pied, vélo...)</Text>
-        <View style={styles.gpsCard}>
-          <Text style={styles.gpsValue}>{trackedDistance.toFixed(2)} km</Text>
-          {!isTracking ? (
-              <Pressable style={styles.button} onPress={startTracking}>
-                <Text style={styles.buttonText}>▶ Démarrer le suivi</Text>
-              </Pressable>
-          ) : (
-              <Pressable style={[styles.button, styles.buttonDanger]} onPress={stopTracking}>
-                <Text style={styles.buttonText}>⏹ Arrêter</Text>
-              </Pressable>
-          )}
-          {!isTracking && trackedDistance > 0 && (
-              <Pressable style={[styles.button, styles.buttonPrimary]} onPress={handleSaveTracked}>
-                <Text style={styles.buttonText}>Enregistrer {trackedDistance.toFixed(2)} km</Text>
-              </Pressable>
-          )}
-        </View>
-
-        <Text style={styles.sectionTitle}>Ou saisie manuelle</Text>
-        <View style={styles.manualCard}>
-          <TextInput
-              style={styles.input}
-              keyboardType="numeric"
-              placeholder="Ex : 12"
-              placeholderTextColor={colors.muted}
-              value={manualValue}
-              onChangeText={setManualValue}
-          />
-          <Pressable style={[styles.button, styles.buttonPrimary]} onPress={handleSaveManual}>
-            <Text style={styles.buttonText}>Enregistrer</Text>
+    <View style={styles.container}>
+      <Text style={styles.sectionTitle}>Suivi GPS (course à pied, vélo...)</Text>
+      <View style={styles.gpsCard}>
+        <Text style={styles.gpsValue}>{trackedDistance.toFixed(2)} km</Text>
+        {!isTracking ? (
+          <Pressable style={styles.button} onPress={startTracking}>
+            <Text style={styles.buttonText}>▶ Démarrer le suivi</Text>
           </Pressable>
-        </View>
+        ) : (
+          <Pressable style={[styles.button, styles.buttonDanger]} onPress={stopTracking}>
+            <Text style={styles.buttonText}>⏹ Arrêter</Text>
+          </Pressable>
+        )}
+        {!isTracking && trackedDistance > 0 && (
+          <Pressable style={[styles.button, styles.buttonPrimary]} onPress={handleSaveTracked}>
+            <Text style={styles.buttonText}>Enregistrer {trackedDistance.toFixed(2)} km</Text>
+          </Pressable>
+        )}
       </View>
+
+      <Text style={styles.sectionTitle}>Ou saisie manuelle</Text>
+      <View style={styles.manualCard}>
+        <TextInput
+          style={styles.input}
+          keyboardType="numeric"
+          placeholder="Ex : 12"
+          placeholderTextColor={colors.muted}
+          value={manualValue}
+          onChangeText={setManualValue}
+        />
+        <Pressable style={[styles.button, styles.buttonPrimary]} onPress={handleSaveManual}>
+          <Text style={styles.buttonText}>Enregistrer</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
