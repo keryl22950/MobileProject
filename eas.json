@@ -6,18 +6,21 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "channel": "development",
       "android": {
         "env": { "APP_VARIANT": "development" }
       }
     },
     "preview": {
       "distribution": "internal",
+      "channel": "preview",
       "android": {
         "buildType": "apk",
-        "env": { "APP_VARIANT": "development" }
+        "env": { "APP_VARIANT": "production" }
       }
     },
     "production": {
+      "channel": "production",
       "android": {
         "buildType": "app-bundle",
         "env": { "APP_VARIANT": "production" }

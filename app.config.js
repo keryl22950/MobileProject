@@ -9,6 +9,12 @@ module.exports = {
         userInterfaceStyle: 'automatic',
         splash: { backgroundColor: '#111827' },
         assetBundlePatterns: ['**/*'],
+        runtimeVersion: {
+            policy: 'appVersion',
+        },
+        updates: {
+            url: 'https://u.expo.dev/1a478fc3-3c75-472c-81ab-c26e8c00265e',
+        },
         ios: {
             supportsTablet: true,
             bundleIdentifier: IS_DEV ? 'com.tonpseudo.challengeapp.dev' : 'com.tonpseudo.challengeapp',

@@ -1,82 +1,118 @@
-# ChallengeApp — Prototype
+# ChallengeApp
 
-Squelette d'application mobile (Android + iOS) pour créer/rejoindre des groupes
-de challenge avec deadline, suivre sa progression en groupe, un chat, et un
-suivi GPS pour les activités type course à pied.
+App mobile (Android + iOS) pour créer des groupes avec ses proches, et se
+challenger ensemble sur des objectifs à deadline (course à pied, pompes,
+lecture, jeux vidéo...), avec suivi GPS, classement en temps réel et chat.
 
-## Installer et lancer le projet
+## Concepts
 
-1. **Installer Node.js** (version 18 ou plus) si pas déjà fait : https://nodejs.org
-2. Ouvrir un terminal dans ce dossier et lancer :
-   ```bash
-   npm install
-   npm start
-   ```
-3. Installer l'app **Expo Go** sur ton téléphone Android (Play Store) et scanner
-   le QR code qui apparaît dans le terminal. L'app se lance directement sur ton
-   téléphone, sans rien compiler côté Android Studio.
-4. Pour tester sur iPhone plus tard : demande à quelqu'un d'installer Expo Go
-   (App Store) et de scanner le même QR code — aucun Mac nécessaire pour ce
-   stade de prototype.
+    Groupe (persistant : membres, rôles, chat)
+    
+    └─ Groupement (nom + deadline : ponctuelle avec bouton Start, ou récurrente)
+    
+        └─ Challenge (objectif précis, hérite la deadline du groupement)
+    
+            ├─ periods/{P0, P1, P2...}/progress ← classement, repart à zéro chaque période
+            
+            ├─ periods/{...}/activities ← journal des activités
+            
+            └─ cumulative ← total toutes périodes confondues (stats)
 
-## Ce qui est fait dans ce squelette
 
-- Navigation complète entre les écrans (React Navigation)
-- Auth anonyme Firebase + prompt de prénom au premier lancement (stocké en local)
-- Écran d'accueil listant **tes vrais groupes**, avec deadline calculée en direct
-- Création de challenge : presets (course, pompes, vélo, lecture, jeu vidéo...)
-  + durée (12h/24h/48h/semaine/custom) + objectif chiffré → écrit dans Firestore
-- Rejoindre un groupe via un code → recherché dans Firestore
-- Écran de groupe avec classement **en temps réel** (mis à jour instantanément
-  pour tout le monde dès qu'un membre progresse)
-- Enregistrement d'activité : saisie manuelle **ou** suivi GPS en direct
-  (calcul de distance parcourue avec `expo-location`) → écrit dans Firestore
-- Chat de groupe **en temps réel**
-- Détail d'une activité façon Strava (emplacement prévu pour une carte —
-  encore avec des données d'exemple, pas branché sur une activité réelle)
+- **Groupe** : ex "Famille Dupont". Contient des membres avec un rôle
+  (`creator` / `admin` / `participant`) et un chat commun.
+- **Groupement** : une session avec une deadline — ponctuelle ("Vacances
+  août 2026", démarrée manuellement par un admin) ou récurrente ("Hebdo
+  20km", qui redémarre automatiquement à intervalle régulier à partir d'une
+  date de départ choisie par l'admin).
+- **Challenge** : un objectif précis à l'intérieur d'un groupement (ex :
+  50 km de course). Peut être suivi manuellement ou via le GPS.
 
-## Structure des données dans Firestore
+## Stack
 
+- **React Native + Expo** (SDK 57) — un seul code pour Android et iOS
+- **Firebase** (Firestore + Auth anonyme) — données temps réel
+- **React Navigation** — navigation entre écrans
+- **expo-location** — suivi GPS
+- **@react-native-community/datetimepicker** — choix de date/heure de démarrage
+
+## Installer et lancer en local (développement)
+
+```bash
+npm install
+npx expo start -c
 ```
+
+Scanne le QR code avec l'app **Expo Go** (Android) — aucune compilation
+native nécessaire pour développer.
+
+### Configurer Firebase (une seule fois)
+
+1. Crée un projet sur https://console.firebase.google.com
+2. Active **Firestore Database** et **Authentication** (méthode "Anonyme")
+3. Colle ta config dans `src/services/firebase.js`
+4. Colle les règles de sécurité (`firestore.rules`) dans Firestore Database → Règles → Publier
+
+## Mettre en ligne une version testable (EAS Build)
+
+Le but : générer un vrai `.apk` que tes proches installent directement
+(sans passer par le Play Store), avec mises à jour automatiques ensuite.
+
+### Setup (une seule fois)
+
+```bash
+npm install -g eas-cli
+eas login
+eas build:configure
+```
+
+### Construire l'APK à partager
+
+```bash
+eas build --platform android --profile preview
+```
+
+Récupère le lien de téléchargement donné à la fin (aussi visible sur
+https://expo.dev), partage-le à tes proches. Ils devront autoriser
+« installer des sources inconnues » sur leur Android.
+
+### Pousser une mise à jour (sans nouvel APK)
+
+Pour un changement de JS uniquement (nouvel écran, correctif, style...) :
+
+```bash
+eas update --branch preview --message "Description du changement"
+```
+
+L'app le récupère automatiquement au prochain lancement.
+
+⚠️ **Un nouveau build complet (`eas build`) est nécessaire** si tu :
+- ajoutes/changes une dépendance native (comme `datetimepicker`)
+- changes une permission, l'icône, le nom de l'app, ou `app.config.js`
+
+### Pour plus tard : publication sur le Play Store
+
+```bash
+eas build --platform android --profile production
+eas submit --platform android
+```
+
+## Structure des données Firestore
+
 groups/{groupId}
-  - label, icon, unit, target, durationHours, deadline
-  - inviteCode, ownerId, memberIds: [uid, ...]
-  members/{userId}
-    - name, progress, joinedAt
-  activities/{activityId}
-    - userId, userName, value, createdAt
-  messages/{messageId}
-    - userId, userName, text, createdAt
-```
-
-## Règles de sécurité Firestore (mode test)
-
-Le "mode test" de Firestore expire après 30 jours. Dans la console Firebase
-(Firestore Database → Règles), tu peux mettre ceci pour un prototype accessible
-uniquement aux personnes connectées (même anonymement) :
-
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
-    }
-  }
-}
-```
+  - name, inviteCode, ownerId, memberIds
+    members/{uid} — name, role, joinedAt
+    groupements/{groupementId}
+      - name, recurring, recurrenceHours, durationHours, status, startedAt
+        challenges/{challengeId}
+          - presetId, label, icon, unit, target
+            periods/{periodKey}/progress/{uid} — name, value
+            periods/{periodKey}/activities/{activityId} — userId, userName, value
+            cumulative/{uid} — name, value (total toutes périodes)
+            messages/{messageId} — userId, userName, text
 
 ## Ce qu'il reste à faire
 
-- Carte du parcours GPS avec `react-native-maps` (dans ActivityDetailScreen)
-- Notifications push (deadline proche, un membre vient d'avancer)
-- Lier chaque activité affichée dans le classement au détail réel (actuellement
-  ActivityDetailScreen affiche encore un exemple statique)
-- Historique des challenges terminés
-
-## Prochaines étapes possibles
-
-- Notifications push (deadline proche, un membre vient d'avancer)
-- Carte du parcours GPS avec `react-native-maps`
-- Vraie authentification (nom/pseudo au lieu d'un compte anonyme)
-- Historique des challenges terminés
+- Carte du parcours GPS (`react-native-maps`)
+- Notifications push (deadline proche, activité d'un membre)
+- Séparer Firebase dev/prod (voir `APP_VARIANT` dans `app.config.js`)
