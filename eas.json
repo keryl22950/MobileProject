@@ -1,0 +1,30 @@
+{
+  "cli": {
+    "version": ">= 12.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "env": { "APP_VARIANT": "development" }
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "env": { "APP_VARIANT": "development" }
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "app-bundle",
+        "env": { "APP_VARIANT": "production" }
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
