@@ -1,4 +1,4 @@
-import { collection, doc, addDoc, setDoc, onSnapshot, orderBy, query, serverTimestamp, increment } from 'firebase/firestore';
+import { collection, doc, addDoc, setDoc, getDoc, onSnapshot, orderBy, query, serverTimestamp, increment } from 'firebase/firestore';
 import { db } from './firebase';
 
 function challengesCol(groupId, groupementId) {
@@ -51,6 +51,9 @@ export function subscribeToCumulative(groupId, groupementId, challengeId, callba
 }
 
 export async function logActivity({ groupId, groupementId, challengeId, periodKey, uid, userName, value }) {
+  const challengeSnap = await getDoc(challengeDoc(groupId, groupementId, challengeId));
+  const challenge = challengeSnap.exists() ? challengeSnap.data() : {};
+
   await addDoc(challengeSubCollection(groupId, groupementId, challengeId, 'periods', periodKey, 'activities'), {
     userId: uid, userName, value, createdAt: serverTimestamp(),
   });
@@ -61,10 +64,17 @@ export async function logActivity({ groupId, groupementId, challengeId, periodKe
       { merge: true }
   );
 
-  // Alimente le cumul global en parallèle, sans jamais repartir à zéro.
   await setDoc(
       challengeSubDoc(groupId, groupementId, challengeId, 'cumulative', uid),
       { name: userName, value: increment(value), updatedAt: serverTimestamp() },
+      { merge: true }
+  );
+
+  // Alimente le profil global (visible par les amis), sans jamais repartir à zéro.
+  const statsKey = challenge.presetId === 'custom' ? challengeId : challenge.presetId;
+  await setDoc(
+      doc(db, 'users', uid, 'stats', statsKey),
+      { icon: challenge.icon, label: challenge.label, unit: challenge.unit, total: increment(value), updatedAt: serverTimestamp() },
       { merge: true }
   );
 }

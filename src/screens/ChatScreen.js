@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, FlatList, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
@@ -9,6 +10,7 @@ export default function ChatScreen({ route }) {
   const { uid, displayName } = useAuth();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const unsubscribe = subscribeToMessages(groupId, setMessages);
@@ -47,7 +49,7 @@ export default function ChatScreen({ route }) {
           );
         }}
       />
-      <View style={styles.inputRow}>
+      <View style={[styles.inputRow, { paddingBottom: spacing.sm + insets.bottom }]}>
         <TextInput
           style={styles.input}
           placeholder="Écrire un message..."

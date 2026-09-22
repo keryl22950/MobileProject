@@ -4,22 +4,22 @@ import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { subscribeToMembers } from '../services/groups';
 import { subscribeToGroupement, startGroupement, getCurrentPeriod } from '../services/groupements';
-import { subscribeToChallenges } from '../services/challenges';
+import { useGroupementFill } from '../hooks/useGroupementFill';
 import Countdown from '../components/Countdown';
+import Screen from '../components/Screen';
 
 export default function GroupementScreen({ navigation, route }) {
     const { groupId, groupementId } = route.params;
     const { uid } = useAuth();
     const [groupement, setGroupement] = useState(null);
     const [members, setMembers] = useState([]);
-    const [challenges, setChallenges] = useState([]);
     const [starting, setStarting] = useState(false);
+    const { challenges, fills, overallPct } = useGroupementFill(groupId, groupementId, groupement);
 
     useEffect(() => {
         const u1 = subscribeToGroupement(groupId, groupementId, setGroupement);
         const u2 = subscribeToMembers(groupId, setMembers);
-        const u3 = subscribeToChallenges(groupId, groupementId, setChallenges);
-        return () => { u1(); u2(); u3(); };
+        return () => { u1(); u2(); };
     }, [groupId, groupementId]);
 
     if (!groupement) {
@@ -30,6 +30,7 @@ export default function GroupementScreen({ navigation, route }) {
     const isAdmin = me?.role === 'creator' || me?.role === 'admin';
     const period = getCurrentPeriod(groupement);
     const isPending = groupement.status === 'pending';
+    const started = period && !period.notStarted;
 
     async function handleStart() {
         setStarting(true);
@@ -53,7 +54,7 @@ export default function GroupementScreen({ navigation, route }) {
     }
 
     return (
-        <View style={styles.container}>
+        <Screen style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.title}>{groupement.name}</Text>
                 <Text style={styles.subtitle}>{groupement.recurring ? 'Récurrent' : 'Ponctuel'}</Text>
@@ -61,6 +62,13 @@ export default function GroupementScreen({ navigation, route }) {
             </View>
 
             {countdownTarget && <Countdown target={countdownTarget} label={countdownLabel} />}
+
+            {started && challenges.length > 0 && (
+                <View style={styles.overallCard}>
+                    <View style={styles.overallBarBg}><View style={[styles.overallBarFill, { width: `${overallPct}%` }]} /></View>
+                    <Text style={styles.overallText}>Avancement global : {overallPct}%</Text>
+                </View>
+            )}
 
             {isPending && isAdmin && (
                 <Pressable style={styles.startButton} onPress={handleStart} disabled={starting}>
@@ -86,22 +94,29 @@ export default function GroupementScreen({ navigation, route }) {
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={{ gap: spacing.sm }}
                 ListEmptyComponent={<Text style={styles.empty}>Aucun challenge pour l'instant.</Text>}
-                renderItem={({ item }) => (
-                    <Pressable
-                        style={styles.challengeCard}
-                        onPress={() => navigation.navigate('Challenge', {
-                            groupId, groupementId, challengeId: item.id,
-                            periodKey: period && !period.notStarted ? period.periodKey : undefined,
-                            periodEnd: period && !period.notStarted ? period.periodEnd?.toISOString() : undefined,
-                        })}
-                    >
-                        <Text style={styles.challengeIcon}>{item.icon}</Text>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.challengeLabel}>{item.label}</Text>
-                            <Text style={styles.challengeSub}>Objectif : {item.target} {item.unit}</Text>
-                        </View>
-                    </Pressable>
-                )}
+                renderItem={({ item }) => {
+                    const fill = fills[item.id];
+                    const pct = fill?.pct || 0;
+                    return (
+                        <Pressable
+                            style={styles.challengeCard}
+                            onPress={() => navigation.navigate('Challenge', {
+                                groupId, groupementId, challengeId: item.id,
+                                periodKey: started ? period.periodKey : undefined,
+                                periodEnd: started ? period.periodEnd?.toISOString() : undefined,
+                            })}
+                        >
+                            {started && <View style={[styles.challengeFill, { width: `${pct}%` }]} />}
+                            <Text style={styles.challengeIcon}>{item.icon}</Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.challengeLabel}>{item.label}</Text>
+                                <Text style={styles.challengeSub}>
+                                    {started && fill ? `${fill.sum.toFixed(1)}/${item.target} ${item.unit}` : `Objectif : ${item.target} ${item.unit}`}
+                                </Text>
+                            </View>
+                        </Pressable>
+                    );
+                }}
             />
 
             {isAdmin && (
@@ -109,7 +124,7 @@ export default function GroupementScreen({ navigation, route }) {
                     <Text style={styles.buttonText}>+ Nouveau challenge</Text>
                 </Pressable>
             )}
-        </View>
+        </Screen>
     );
 }
 
@@ -121,10 +136,15 @@ const styles = StyleSheet.create({
     pending: { color: colors.danger, fontSize: 13, fontWeight: '600', marginTop: 4 },
     hint: { color: colors.muted, fontSize: 12, textAlign: 'center', marginBottom: spacing.md },
     startButton: { backgroundColor: colors.success, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: spacing.md },
+    overallCard: { marginBottom: spacing.md },
+    overallBarBg: { height: 10, backgroundColor: colors.border, borderRadius: 5, overflow: 'hidden', marginBottom: 6 },
+    overallBarFill: { height: 10, backgroundColor: colors.primary, borderRadius: 5 },
+    overallText: { color: colors.muted, fontSize: 12, textAlign: 'center' },
     actionsRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
     sectionTitle: { color: colors.muted, fontSize: 13, marginBottom: spacing.sm, textTransform: 'uppercase' },
     empty: { color: colors.muted, textAlign: 'center', marginTop: spacing.lg },
-    challengeCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: 12, padding: spacing.sm, borderWidth: 1, borderColor: colors.border },
+    challengeCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: 12, padding: spacing.sm, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', position: 'relative' },
+    challengeFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: 'rgba(34,197,94,0.18)', borderRadius: 12 },
     challengeIcon: { fontSize: 26 },
     challengeLabel: { color: colors.text, fontSize: 14, fontWeight: '600' },
     challengeSub: { color: colors.muted, fontSize: 12, marginTop: 2 },

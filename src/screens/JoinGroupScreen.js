@@ -4,9 +4,9 @@ import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { joinGroupByCode } from '../services/groups';
 
-export default function JoinGroupScreen({ navigation }) {
+export default function JoinGroupScreen({ navigation, route }) {
   const { uid, displayName } = useAuth();
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(route.params?.code ?? '');
   const [joining, setJoining] = useState(false);
 
   async function handleJoin() {

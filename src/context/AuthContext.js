@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ensureSignedIn } from '../services/firebase';
+import { upsertUserProfile } from '../services/users';
 
 const AuthContext = createContext(null);
 
@@ -21,6 +22,7 @@ export function AuthProvider({ children }) {
   async function setDisplayName(name) {
     await AsyncStorage.setItem('displayName', name);
     setDisplayNameState(name);
+    if (uid) await upsertUserProfile({ uid, displayName: name });
   }
 
   return (

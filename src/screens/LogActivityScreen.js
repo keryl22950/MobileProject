@@ -4,19 +4,7 @@ import * as Location from 'expo-location';
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { logActivity } from '../services/challenges';
-
-// Calcule la distance entre 2 points GPS (formule de Haversine), en km.
-function distanceKm(a, b) {
-  const R = 6371;
-  const dLat = ((b.latitude - a.latitude) * Math.PI) / 180;
-  const dLon = ((b.longitude - a.longitude) * Math.PI) / 180;
-  const lat1 = (a.latitude * Math.PI) / 180;
-  const lat2 = (b.latitude * Math.PI) / 180;
-  const sinDLat = Math.sin(dLat / 2);
-  const sinDLon = Math.sin(dLon / 2);
-  const h = sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLon * sinDLon;
-  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
-}
+import { distanceKm } from '../utils/geo';
 
 export default function LogActivityScreen({ route, navigation }) {
   const { groupId, groupementId, challengeId, periodKey } = route.params;

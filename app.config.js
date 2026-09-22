@@ -4,6 +4,7 @@ module.exports = {
     expo: {
         name: IS_DEV ? 'ChallengeApp (Dev)' : 'ChallengeApp',
         slug: 'challenge-app',
+        scheme: 'challengeapp',
         version: '1.0.0',
         orientation: 'portrait',
         userInterfaceStyle: 'automatic',

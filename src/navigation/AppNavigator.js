@@ -15,6 +15,10 @@ import CreateChallengeScreen from '../screens/CreateChallengeScreen';
 import ChallengeScreen from '../screens/ChallengeScreen';
 import LogActivityScreen from '../screens/LogActivityScreen';
 import ChatScreen from '../screens/ChatScreen';
+import QuickLogScreen from '../screens/QuickLogScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import FriendsScreen from '../screens/FriendsScreen';
+import FriendProfileScreen from '../screens/FriendProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -42,6 +46,10 @@ export default function AppNavigator() {
             <Stack.Screen name="Challenge" component={ChallengeScreen} options={{ title: 'Challenge' }} />
             <Stack.Screen name="LogActivity" component={LogActivityScreen} options={{ title: 'Enregistrer une activité' }} />
             <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Discussion' }} />
+            <Stack.Screen name="QuickLog" component={QuickLogScreen} options={{ title: 'Enregistrement rapide' }} />
+            <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profil' }} />
+            <Stack.Screen name="Friends" component={FriendsScreen} options={{ title: 'Amis' }} />
+            <Stack.Screen name="FriendProfile" component={FriendProfileScreen} options={{ title: 'Profil' }} />
         </Stack.Navigator>
     );
 }
