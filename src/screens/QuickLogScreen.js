@@ -5,9 +5,10 @@ import { colors, spacing } from '../theme';
 import { CHALLENGE_PRESETS } from '../data/presets';
 import { useAuth } from '../context/AuthContext';
 import { findActiveChallengesForPreset } from '../services/quickLog';
-import { logActivity } from '../services/challenges';
 import { distanceKm } from '../utils/geo';
 import Screen from '../components/Screen';
+import { applyProgressOnly } from '../services/challenges';
+import { recordUserActivity } from '../services/users';
 
 const QUICK_PRESETS = CHALLENGE_PRESETS.filter((p) => p.id !== 'custom');
 
@@ -71,14 +72,14 @@ export default function QuickLogScreen({ navigation }) {
 
     async function handleSave(value) {
         if (!value || value <= 0) { Alert.alert('Valeur invalide', 'Indique une valeur supérieure à 0.'); return; }
-        const targets = matches.filter((m) => selected[m.challengeId + m.groupId]);
-        if (targets.length === 0) { Alert.alert('Rien à enregistrer', 'Sélectionne au moins un challenge.'); return; }
+        const targets = (matches || []).filter((m) => selected[m.challengeId + m.groupId]);
 
         setSaving(true);
         try {
             await Promise.all(targets.map((m) =>
-                logActivity({ groupId: m.groupId, groupementId: m.groupementId, challengeId: m.challengeId, periodKey: m.periodKey, uid, userName: displayName, value })
+                applyProgressOnly({ groupId: m.groupId, groupementId: m.groupementId, challengeId: m.challengeId, periodKey: m.periodKey, uid, userName: displayName, value })
             ));
+            await recordUserActivity({ uid, presetId: preset.id, label: preset.label, icon: preset.icon, unit: preset.unit, value });
             navigation.goBack();
         } catch (err) {
             Alert.alert('Erreur', err.message);
@@ -115,7 +116,7 @@ export default function QuickLogScreen({ navigation }) {
                 <Text style={styles.sectionTitle}>{preset.icon} {preset.label} — challenges concernés</Text>
 
                 {matches.length === 0 ? (
-                    <Text style={styles.empty}>Aucun challenge actif de ce type dans tes groupes en ce moment.</Text>
+                    <Text style={styles.empty}>Aucun challenge actif de ce type dans tes groupes pour l'instant — l'activité sera quand même ajoutée à ton profil.</Text>
                 ) : (
                     <View style={{ gap: spacing.sm }}>
                         {matches.map((m) => {

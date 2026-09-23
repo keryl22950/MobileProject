@@ -2,15 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable } from 'react-native';
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
-import { subscribeToUserStats } from '../services/users';
 import Screen from '../components/Screen';
+import { subscribeToUserStats, subscribeToUserActivities } from '../services/users';
+
 
 export default function ProfileScreen({ navigation }) {
     const { displayName, uid } = useAuth();
     const [stats, setStats] = useState([]);
-
+    const [activities, setActivities] = useState([]);
     useEffect(() => {
-        const unsubscribe = subscribeToUserStats(uid, setStats);
+        const unsubscribe = subscribeToUserActivities(uid, setActivities);
         return unsubscribe;
     }, [uid]);
 
@@ -42,6 +43,24 @@ export default function ProfileScreen({ navigation }) {
                     )}
                 />
             )}
+            <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Historique</Text>
+            {activities.length === 0 ? (
+                <Text style={styles.empty}>Aucune activité enregistrée encore.</Text>
+            ) : (
+                activities.map((a) => {
+                    const date = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+                    return (
+                        <View key={a.id} style={styles.historyRow}>
+                            <Text style={styles.icon}>{a.icon}</Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.label}>{a.label}</Text>
+                                <Text style={styles.historyDate}>{date.toLocaleDateString('fr-FR')} à {date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</Text>
+                            </View>
+                            <Text style={styles.value}>+{a.value} {a.unit}</Text>
+                        </View>
+                    );
+                })
+            )}
         </Screen>
     );
 }
@@ -59,4 +78,6 @@ const styles = StyleSheet.create({
     label: { color: colors.text, flex: 1, fontWeight: '600' },
     value: { color: colors.primary, fontWeight: '700' },
     buttonText: { color: colors.primaryText, fontWeight: '600', fontSize: 14 },
+    historyRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: 12, padding: spacing.md, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.sm },
+    historyDate: { color: colors.muted, fontSize: 11, marginTop: 2 },
 });
