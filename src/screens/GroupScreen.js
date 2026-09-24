@@ -25,7 +25,11 @@ function GroupementCard({ groupId, groupement, onPress }) {
 
     return (
         <Pressable style={styles.card} onPress={onPress}>
-            {started && <View style={[styles.cardFill, { width: `${overallPct}%` }]} />}
+            {started && (
+                <View style={styles.cardClip}>
+                    <View style={[styles.cardFill, { width: `${overallPct}%` }]} />
+                </View>
+            )}
             <Text style={styles.cardIcon}>{groupement.recurring ? '🔁' : '📅'}</Text>
             <View style={{ flex: 1 }}>
                 <Text style={styles.cardTitle}>{groupement.name}</Text>
@@ -113,8 +117,9 @@ const styles = StyleSheet.create({
     topActions: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
     sectionTitle: { color: colors.muted, fontSize: 13, marginBottom: spacing.sm, textTransform: 'uppercase' },
     empty: { color: colors.muted, textAlign: 'center', marginTop: spacing.lg },
-    card: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: 12, padding: spacing.md, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', position: 'relative' },
-    cardFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: 'rgba(99,102,241,0.18)', borderRadius: 12},
+    card: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: 12, padding: spacing.md, borderWidth: 1, borderColor: colors.border, position: 'relative' },
+    cardClip: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, borderRadius: 12, overflow: 'hidden' },
+    cardFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: 'rgba(99,102,241,0.18)' },
     cardIcon: { fontSize: 26 },
     cardTitle: { color: colors.text, fontSize: 15, fontWeight: '600' },
     cardSubtitle: { color: colors.muted, fontSize: 12, marginTop: 2 },

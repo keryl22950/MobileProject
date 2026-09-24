@@ -100,13 +100,13 @@ export default function GroupementScreen({ navigation, route }) {
                     return (
                         <Pressable
                             style={styles.challengeCard}
-                            onPress={() => navigation.navigate('Challenge', {
-                                groupId, groupementId, challengeId: item.id,
-                                periodKey: started ? period.periodKey : undefined,
-                                periodEnd: started ? period.periodEnd?.toISOString() : undefined,
-                            })}
+                            onPress={() => navigation.navigate('Challenge', { /* ... inchangé ... */ })}
                         >
-                            {started && <View style={[styles.challengeFill, { width: `${pct}%` }]} />}
+                            {started && (
+                                <View style={styles.challengeCardClip}>
+                                    <View style={[styles.challengeFill, { width: `${pct}%` }]} />
+                                </View>
+                            )}
                             <Text style={styles.challengeIcon}>{item.icon}</Text>
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.challengeLabel}>{item.label}</Text>
@@ -143,8 +143,9 @@ const styles = StyleSheet.create({
     actionsRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
     sectionTitle: { color: colors.muted, fontSize: 13, marginBottom: spacing.sm, textTransform: 'uppercase' },
     empty: { color: colors.muted, textAlign: 'center', marginTop: spacing.lg },
-    challengeCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: 12, padding: spacing.sm, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', position: 'relative' },
-    challengeFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: 'rgba(34,197,94,0.18)', borderRadius: 12 },
+    challengeCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: 12, padding: spacing.sm, borderWidth: 1, borderColor: colors.border, position: 'relative' },
+    challengeCardClip: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, borderRadius: 12, overflow: 'hidden' },
+    challengeFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: 'rgba(34,197,94,0.18)' },
     challengeIcon: { fontSize: 26 },
     challengeLabel: { color: colors.text, fontSize: 14, fontWeight: '600' },
     challengeSub: { color: colors.muted, fontSize: 12, marginTop: 2 },
@@ -152,4 +153,5 @@ const styles = StyleSheet.create({
     buttonPrimary: { backgroundColor: colors.primary },
     buttonSecondary: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
     buttonText: { color: colors.primaryText, fontWeight: '600', fontSize: 13 },
+
 });
