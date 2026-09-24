@@ -65,7 +65,7 @@ export default function CreateChallengeScreen({ navigation, route }) {
           <TextInput style={styles.input} keyboardType="numeric" value={target} onChangeText={setTarget} />
         </View>
 
-        <Text style={styles.hint}>La deadline de ce challenge est celle du groupement.</Text>
+        <Text style={styles.hint}>La deadline de ce challenge est celle de l'événement.</Text>
 
         <Pressable style={styles.createButton} onPress={handleCreate} disabled={creating}>
           {creating ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.createButtonText}>Créer le challenge</Text>}

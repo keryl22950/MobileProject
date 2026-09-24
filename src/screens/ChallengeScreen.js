@@ -59,7 +59,7 @@ export default function ChallengeScreen({ navigation, route }) {
         )}
 
         {!periodKey && !readOnly ? (
-            <Text style={styles.empty}>Ce groupement n'a pas encore démarré — reviens une fois qu'il aura débuté !</Text>
+            <Text style={styles.empty}>Cet événement n'a pas encore démarré — reviens une fois qu'il aura débuté !</Text>
         ) : (
             <>
               <Text style={styles.sectionTitle}>Contributions{readOnly ? ' (historique)' : ''}</Text>

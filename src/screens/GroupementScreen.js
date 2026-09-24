@@ -72,10 +72,10 @@ export default function GroupementScreen({ navigation, route }) {
 
             {isPending && isAdmin && (
                 <Pressable style={styles.startButton} onPress={handleStart} disabled={starting}>
-                    {starting ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.buttonText}>▶ Démarrer le groupement</Text>}
+                    {starting ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.buttonText}>▶ Démarrer l'événement</Text>}
                 </Pressable>
             )}
-            {isPending && !isAdmin && <Text style={styles.hint}>En attente qu'un admin démarre ce groupement.</Text>}
+            {isPending && !isAdmin && <Text style={styles.hint}>En attente qu'un admin démarre cet événement.</Text>}
 
             <View style={styles.actionsRow}>
                 <Pressable style={[styles.button, styles.buttonSecondary, { flex: 1 }]} onPress={() => navigation.navigate('Stats', { groupId, groupementId })}>

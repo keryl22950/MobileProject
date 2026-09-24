@@ -85,12 +85,12 @@ export default function GroupScreen({ navigation, route }) {
                 <Text style={styles.buttonText}>📤 Inviter avec le code</Text>
             </Pressable>
 
-            <Text style={styles.sectionTitle}>Groupements</Text>
+            <Text style={styles.sectionTitle}>Événements</Text>
             <FlatList
                 data={groupements}
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={{ gap: spacing.sm }}
-                ListEmptyComponent={<Text style={styles.empty}>Aucun groupement pour l'instant.</Text>}
+                ListEmptyComponent={<Text style={styles.empty}>Aucun événement pour l'instant.</Text>}
                 renderItem={({ item }) => (
                     <GroupementCard groupId={groupId} groupement={item} onPress={() => navigation.navigate('Groupement', { groupId, groupementId: item.id })} />
                 )}
@@ -98,7 +98,7 @@ export default function GroupScreen({ navigation, route }) {
 
             {isAdmin && (
                 <Pressable style={[styles.button, styles.buttonPrimary, { marginTop: spacing.md }]} onPress={() => navigation.navigate('CreateGroupement', { groupId })}>
-                    <Text style={styles.buttonText}>+ Nouveau groupement</Text>
+                    <Text style={styles.buttonText}>+ Nouvel événement</Text>
                 </Pressable>
             )}
         </Screen>

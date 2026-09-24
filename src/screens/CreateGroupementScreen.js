@@ -64,7 +64,7 @@ export default function CreateGroupementScreen({ navigation, route }) {
     }
 
     async function handleSave() {
-        if (!name.trim()) { Alert.alert('Nom manquant', 'Donne un nom à ce groupement.'); return; }
+        if (!name.trim()) { Alert.alert('Nom manquant', 'Donne un nom à cet événement.'); return; }
         const hours = recurring ? resolveHours(selectedRecurrence) : resolveHours(selectedDuration);
         if (!hours || hours <= 0) { Alert.alert('Durée invalide', 'Indique une durée en heures supérieure à 0.'); return; }
 
@@ -103,7 +103,7 @@ export default function CreateGroupementScreen({ navigation, route }) {
     return (
         <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing.md, gap: spacing.lg }}>
             <View>
-                <Text style={styles.sectionTitle}>Nom du groupement</Text>
+                <Text style={styles.sectionTitle}>Nom de l'événement</Text>
                 <TextInput style={styles.input} placeholder="Ex : Vacances août 2026" placeholderTextColor={colors.muted} value={name} onChangeText={setName} />
             </View>
 

@@ -37,8 +37,8 @@ export default function AppNavigator() {
             <Stack.Screen name="JoinGroup" component={JoinGroupScreen} options={{ title: 'Rejoindre un groupe' }} />
             <Stack.Screen name="Group" component={GroupScreen} options={{ title: 'Groupe' }} />
             <Stack.Screen name="Members" component={MembersScreen} options={{ title: 'Membres' }} />
-            <Stack.Screen name="CreateGroupement" component={CreateGroupementScreen} options={{ title: 'Groupement' }} />
-            <Stack.Screen name="Groupement" component={GroupementScreen} options={{ title: 'Groupement' }} />
+            <Stack.Screen name="CreateGroupement" component={CreateGroupementScreen} options={{ title: 'Événement' }} />
+            <Stack.Screen name="Groupement" component={GroupementScreen} options={{ title: 'Événement' }} />
             <Stack.Screen name="Stats" component={StatsScreen} options={{ title: 'Statistiques' }} />
             <Stack.Screen name="Historique" component={HistoriqueScreen} options={{ title: 'Historique' }} />
             <Stack.Screen name="GroupementHistorique" component={GroupementHistoriqueScreen} options={{ title: 'Historique' }} />
