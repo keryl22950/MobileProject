@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, Share, ActivityIndicator } from 'react-native';
+import {View, Text, StyleSheet, FlatList, Pressable, Share, ActivityIndicator, Alert} from 'react-native';
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
-import { subscribeToGroup, subscribeToMembers } from '../services/groups';
+import { subscribeToGroup, subscribeToMembers, leaveGroup } from '../services/groups';
 import { subscribeToGroupements, getCurrentPeriod } from '../services/groupements';
+import { deleteGroupement } from '../services/groupements';
 import { useGroupementFill } from '../hooks/useGroupementFill';
 import Screen from '../components/Screen';
+import {expo as group} from "../../app.config";
 
-function GroupementCard({ groupId, groupement, onPress }) {
+function GroupementCard({ groupId, groupement, isAdmin, onPress, onDelete }) {
     const { overallPct } = useGroupementFill(groupId, groupement.id, groupement);
     const period = getCurrentPeriod(groupement);
     const started = period && !period.notStarted;
@@ -24,7 +26,7 @@ function GroupementCard({ groupId, groupement, onPress }) {
     }
 
     return (
-        <Pressable style={styles.card} onPress={onPress}>
+        <Pressable style={styles.card} onPress={onPress} onLongPress={isAdmin ? onDelete : undefined}>
             {started && (
                 <View style={styles.cardClip}>
                     <View style={[styles.cardFill, { width: `${overallPct}%` }]} />
@@ -67,6 +69,24 @@ export default function GroupScreen({ navigation, route }) {
         });
     }
 
+    function handleLeaveGroup() {
+        Alert.alert(
+            `Quitter "${group.name}" ?`,
+            "Si tu es le créateur du groupe, un autre admin (ou à défaut un participant) reprendra automatiquement ce rôle. Si tu es la dernière personne du groupe, il sera entièrement supprimé.",
+            [
+                { text: 'Annuler', style: 'cancel' },
+                { text: 'Quitter', style: 'destructive', onPress: async () => {
+                        try {
+                            await leaveGroup({ groupId, uid });
+                            navigation.navigate('Home');
+                        } catch (err) {
+                            Alert.alert('Erreur', err.message);
+                        }
+                    }},
+            ]
+        );
+    }
+
     return (
         <Screen style={styles.container}>
             <View style={styles.header}>
@@ -75,6 +95,14 @@ export default function GroupScreen({ navigation, route }) {
             </View>
 
             <View style={styles.topActions}>
+                {isAdmin && (
+                    <Pressable onPress={() => navigation.navigate('CreateGroup', { groupId })}>
+                        <Text style={{ fontSize: 20 }}>✏️</Text>
+                    </Pressable>
+                )}
+                <Pressable onPress={handleLeaveGroup}>
+                    <Text style={{ fontSize: 20 }}>🚪</Text>
+                </Pressable>
                 <Pressable style={[styles.button, styles.buttonSecondary, { flex: 1 }]} onPress={() => navigation.navigate('Members', { groupId })}>
                     <Text style={styles.buttonText}>👤 Membres</Text>
                 </Pressable>
@@ -95,8 +123,20 @@ export default function GroupScreen({ navigation, route }) {
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={{ gap: spacing.sm }}
                 ListEmptyComponent={<Text style={styles.empty}>Aucun événement pour l'instant.</Text>}
+                javascript
                 renderItem={({ item }) => (
-                    <GroupementCard groupId={groupId} groupement={item} onPress={() => navigation.navigate('Groupement', { groupId, groupementId: item.id })} />
+                    <GroupementCard
+                        groupId={groupId}
+                        groupement={item}
+                        isAdmin={isAdmin}
+                        onPress={() => navigation.navigate('Groupement', { groupId, groupementId: item.id })}
+                        onDelete={() => {
+                            Alert.alert('Supprimer cet événement ?', `"${item.name}" sera définitivement supprimé.`, [
+                                { text: 'Annuler', style: 'cancel' },
+                                { text: 'Supprimer', style: 'destructive', onPress: () => deleteGroupement({ groupId, groupementId: item.id }) },
+                            ]);
+                        }}
+                    />
                 )}
             />
 

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable } from 'react-native';
+import {View, Text, StyleSheet, FlatList, Pressable, Alert} from 'react-native';
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
-import { subscribeToMyGroups } from '../services/groups';
+import { subscribeToMyGroups, leaveGroup } from '../services/groups';
 import Screen from '../components/Screen';
 
 export default function HomeScreen({ navigation }) {
@@ -15,6 +15,23 @@ export default function HomeScreen({ navigation }) {
     const unsubscribe = subscribeToMyGroups(uid, (data) => { setGroups(data); setLoading(false); });
     return unsubscribe;
   }, [uid]);
+
+    function handleLongPressGroup(item) {
+        Alert.alert(
+            `Quitter "${item.name}" ?`,
+            "Si tu es le créateur du groupe, un autre admin (ou à défaut un participant) reprendra automatiquement ce rôle. Si tu es la dernière personne du groupe, il sera entièrement supprimé.",
+            [
+                { text: 'Annuler', style: 'cancel' },
+                { text: 'Quitter', style: 'destructive', onPress: async () => {
+                        try {
+                            await leaveGroup({ groupId: item.id, uid });
+                        } catch (err) {
+                            Alert.alert('Erreur', err.message);
+                        }
+                    }},
+            ]
+        );
+    }
 
   return (
       <Screen style={styles.container}>
@@ -39,7 +56,11 @@ export default function HomeScreen({ navigation }) {
               </Text>
             }
             renderItem={({ item }) => (
-                <Pressable style={styles.card} onPress={() => navigation.navigate('Group', { groupId: item.id })}>
+                <Pressable
+                    style={styles.card}
+                    onPress={() => navigation.navigate('Group', { groupId: item.id })}
+                    onLongPress={() => handleLongPressGroup(item)}
+                >
                   <Text style={styles.cardIcon}>👥</Text>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.cardTitle}>{item.name}</Text>
@@ -60,6 +81,8 @@ export default function HomeScreen({ navigation }) {
       </Screen>
   );
 }
+
+
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: spacing.md },

@@ -57,7 +57,13 @@ export default function ChallengeScreen({ navigation, route }) {
               </Text>
             </View>
         )}
-
+        {!readOnly && isAdmin && (
+            <View style={styles.adminRow}>
+              <Pressable style={[styles.smallButton, styles.buttonSecondary]} onPress={() => navigation.navigate('CreateChallenge', { groupId, groupementId, challengeId })}>
+                <Text style={styles.buttonText}>✏️ Modifier</Text>
+              </Pressable>
+            </View>
+        )}
         {!periodKey && !readOnly ? (
             <Text style={styles.empty}>Cet événement n'a pas encore démarré — reviens une fois qu'il aura débuté !</Text>
         ) : (

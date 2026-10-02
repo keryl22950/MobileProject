@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   addDoc,
+  getDoc,
   setDoc,
   getDocs,
   query,
@@ -10,7 +11,7 @@ import {
   orderBy,
   serverTimestamp,
   updateDoc,
-  limit,
+  limit, deleteDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -131,4 +132,43 @@ export function subscribeToMessages(groupId, callback) {
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
   });
+}
+
+// ajoute getDoc à l'import existant de 'firebase/firestore'
+
+export async function updateGroup({ groupId, changes }) {
+  await updateDoc(doc(db, 'groups', groupId), changes);
+}
+
+// Un membre quitte le groupe. S'il ne reste plus personne, le groupe est
+// supprimé entièrement. S'il était créateur et qu'il reste des membres, le
+// rôle est transmis en priorité à un admin existant, sinon au premier
+// participant restant.
+export async function leaveGroup({ groupId, uid }) {
+  const [membersSnap, groupSnap] = await Promise.all([
+    getDocs(collection(db, 'groups', groupId, 'members')),
+    getDoc(doc(db, 'groups', groupId)),
+  ]);
+  const members = membersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const me = members.find((m) => m.id === uid);
+  const remaining = members.filter((m) => m.id !== uid);
+  const currentMemberIds = groupSnap.data()?.memberIds || [];
+  const newMemberIds = currentMemberIds.filter((id) => id !== uid);
+
+  if (remaining.length === 0) {
+    await deleteDoc(doc(db, 'groups', groupId, 'members', uid));
+    await deleteDoc(doc(db, 'groups', groupId));
+    return { groupDeleted: true };
+  }
+
+  if (me?.role === 'creator') {
+    const nextCreator = remaining.find((m) => m.role === 'admin') || remaining[0];
+    await setDoc(doc(db, 'groups', groupId, 'members', nextCreator.id), { role: 'creator' }, { merge: true });
+    await updateDoc(doc(db, 'groups', groupId), { memberIds: newMemberIds, ownerId: nextCreator.id });
+  } else {
+    await updateDoc(doc(db, 'groups', groupId), { memberIds: newMemberIds });
+  }
+
+  await deleteDoc(doc(db, 'groups', groupId, 'members', uid));
+  return { groupDeleted: false };
 }

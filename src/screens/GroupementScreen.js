@@ -4,6 +4,7 @@ import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { subscribeToMembers } from '../services/groups';
 import { subscribeToGroupement, startGroupement, getCurrentPeriod } from '../services/groupements';
+import { deleteChallenge } from '../services/challenges';
 import { useGroupementFill } from '../hooks/useGroupementFill';
 import Countdown from '../components/Countdown';
 import Screen from '../components/Screen';
@@ -101,6 +102,12 @@ export default function GroupementScreen({ navigation, route }) {
                         <Pressable
                             style={styles.challengeCard}
                             onPress={() => navigation.navigate('Challenge', { /* ... inchangé ... */ })}
+                            onLongPress={isAdmin ? () => {
+                                Alert.alert('Supprimer ce challenge ?', `"${item.label}" sera définitivement supprimé.`, [
+                                    { text: 'Annuler', style: 'cancel' },
+                                    { text: 'Supprimer', style: 'destructive', onPress: () => deleteChallenge({ groupId, groupementId, challengeId: item.id }) },
+                                ]);
+                            } : undefined}
                         >
                             {started && (
                                 <View style={styles.challengeCardClip}>
