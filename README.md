@@ -116,3 +116,7 @@ groups/{groupId}
 - Carte du parcours GPS (`react-native-maps`)
 - Notifications push (deadline proche, activité d'un membre)
 - Séparer Firebase dev/prod (voir `APP_VARIANT` dans `app.config.js`)
+
+## Diagramme de l'application
+
+[![Architecture diagram of keryl22950/mobileproject](https://gitdiagram.com/keryl22950/mobileproject/diagram.png)](https://gitdiagram.com/keryl22950/mobileproject?utm_source=readme&utm_medium=picture)
