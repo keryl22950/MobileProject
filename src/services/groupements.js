@@ -39,13 +39,19 @@ export async function updateGroupement({ groupId, groupementId, changes }) {
 
 export function subscribeToGroupements(groupId, callback) {
     const q = query(collection(db, 'groups', groupId, 'groupements'), orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+    return onSnapshot(
+        q,
+        (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+        (error) => { if (error.code !== 'permission-denied') console.error(error); }
+    );
 }
 
 export function subscribeToGroupement(groupId, groupementId, callback) {
-    return onSnapshot(doc(db, 'groups', groupId, 'groupements', groupementId), (snap) => {
-        if (snap.exists()) callback({ id: snap.id, ...snap.data() });
-    });
+    return onSnapshot(
+        doc(db, 'groups', groupId, 'groupements', groupementId),
+        (snap) => { if (snap.exists()) callback({ id: snap.id, ...snap.data() }); },
+        (error) => { if (error.code !== 'permission-denied') console.error(error); }
+    );
 }
 
 // Calcule la période actuelle. Cas particuliers :
