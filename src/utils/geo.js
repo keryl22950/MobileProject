@@ -1,3 +1,4 @@
+//formule de Haversine
 export function distanceKm(a, b) {
     const R = 6371;
     const dLat = ((b.latitude - a.latitude) * Math.PI) / 180;

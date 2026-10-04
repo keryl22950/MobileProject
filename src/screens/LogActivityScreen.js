@@ -5,6 +5,7 @@ import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { logActivity } from '../services/challenges';
 import { distanceKm } from '../utils/geo';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 
 export default function LogActivityScreen({ route, navigation }) {
   const { groupId, groupementId, challengeId, periodKey } = route.params;
@@ -23,20 +24,26 @@ export default function LogActivityScreen({ route, navigation }) {
       return;
     }
 
+    await activateKeepAwakeAsync(); // empêche l'écran de s'éteindre pendant le suivi
+
     setIsTracking(true);
     setTrackedDistance(0);
     lastPoint.current = null;
 
     watchSubscription.current = await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.High, distanceInterval: 5, timeInterval: 3000 },
-      (loc) => {
-        const point = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
-        if (lastPoint.current) {
-          const d = distanceKm(lastPoint.current, point);
-          setTrackedDistance((prev) => prev + d);
+        { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 5, timeInterval: 2000 },
+        (loc) => {
+          // Ignore les points peu fiables (précision annoncée par le GPS, en mètres) —
+          // mieux vaut manquer un point que d'ajouter une distance bidon.
+          if (loc.coords.accuracy != null && loc.coords.accuracy > 20) return;
+
+          const point = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+          if (lastPoint.current) {
+            const d = distanceKm(lastPoint.current, point);
+            setTrackedDistance((prev) => prev + d);
+          }
+          lastPoint.current = point;
         }
-        lastPoint.current = point;
-      }
     );
   }
 
@@ -45,6 +52,7 @@ export default function LogActivityScreen({ route, navigation }) {
       watchSubscription.current.remove();
       watchSubscription.current = null;
     }
+    deactivateKeepAwake();
     setIsTracking(false);
   }
 
