@@ -29,6 +29,12 @@ module.exports = {
         },
         plugins: [
             ['expo-location', { locationAlwaysAndWhenInUsePermission: "L'app utilise ta position pour mesurer la distance parcourue." }],
+            ['expo-build-properties', {
+                android: {
+                    enableProguardInReleaseBuilds: true,
+                    enableShrinkResourcesInReleaseBuilds: true,
+                },
+            }],
         ],
         extra: {
             appVariant: IS_DEV ? 'development' : 'production',

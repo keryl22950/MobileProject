@@ -1,8 +1,3 @@
-// ⚠️ À COMPLÉTER : crée un projet gratuit sur https://console.firebase.google.com
-// puis récupère ta config dans "Paramètres du projet > Général > Vos applications"
-// et colle-la ci-dessous. Active aussi "Firestore Database" et "Authentication"
-// (méthode "Anonyme" suffit pour le prototype) dans la console Firebase.
-
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import {

@@ -9,6 +9,7 @@ import { distanceKm } from '../utils/geo';
 import Screen from '../components/Screen';
 import { applyProgressOnly } from '../services/challenges';
 import { recordUserActivity } from '../services/users';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 
 const QUICK_PRESETS = CHALLENGE_PRESETS.filter((p) => p.id !== 'custom');
 
@@ -49,14 +50,22 @@ export default function QuickLogScreen({ navigation }) {
             Alert.alert('Permission refusée', "L'accès à la position est nécessaire pour le suivi GPS.");
             return;
         }
+
+        await activateKeepAwakeAsync();
+
         setIsTracking(true);
         setTrackedDistance(0);
         lastPoint.current = null;
+
         watchSubscription.current = await Location.watchPositionAsync(
-            { accuracy: Location.Accuracy.High, distanceInterval: 5, timeInterval: 3000 },
+            { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 5, timeInterval: 2000 },
             (loc) => {
+                if (loc.coords.accuracy != null && loc.coords.accuracy > 20) return;
+
                 const point = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
-                if (lastPoint.current) setTrackedDistance((prev) => prev + distanceKm(lastPoint.current, point));
+                if (lastPoint.current) {
+                    setTrackedDistance((prev) => prev + distanceKm(lastPoint.current, point));
+                }
                 lastPoint.current = point;
             }
         );
@@ -67,6 +76,7 @@ export default function QuickLogScreen({ navigation }) {
             watchSubscription.current.remove();
             watchSubscription.current = null;
         }
+        deactivateKeepAwake();
         setIsTracking(false);
     }
 
