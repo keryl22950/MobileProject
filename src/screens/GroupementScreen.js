@@ -118,7 +118,7 @@ export default function GroupementScreen({ navigation, route }) {
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.challengeLabel}>{item.label}</Text>
                                 <Text style={styles.challengeSub}>
-                                    {started && fill ? `${fill.sum.toFixed(1)}/${item.target} ${item.unit}` : `Objectif : ${item.target} ${item.unit}`}
+                                    {started && fill ? `${fill.sum.toFixed(1)}/${fill.target} ${item.unit}` : `Objectif : ${item.target} ${item.unit}`}
                                 </Text>
                             </View>
                         </Pressable>

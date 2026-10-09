@@ -4,6 +4,8 @@ import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { subscribeToChallenge, subscribeToProgress } from '../services/challenges';
 import Screen from '../components/Screen';
+import { subscribeToGroupement } from '../services/groupements';
+import { getEffectiveTarget } from '../services/dynamicTargets';
 
 function formatTimeLeft(periodEnd) {
   if (!periodEnd) return '';
@@ -32,14 +34,30 @@ export default function ChallengeScreen({ navigation, route }) {
     return () => { u1(); u2(); };
   }, [groupId, groupementId, challengeId, periodKey]);
 
+  const [groupement, setGroupement] = useState(null);
+  const [target, setTarget] = useState(null);
+
+  useEffect(() => subscribeToGroupement(groupId, groupementId, setGroupement), [groupId, groupementId]);
+
+  useEffect(() => {
+    if (!challenge || !groupement || !periodKey) return;
+    let cancelled = false;
+    getEffectiveTarget({ groupId, groupementId, groupement, challenge, periodKey })
+        .then((t) => { if (!cancelled) setTarget(t); })
+        .catch(() => { if (!cancelled) setTarget(challenge.target); });
+    return () => { cancelled = true; };
+  }, [challenge?.target, groupement?.dynamicTarget, groupement?.adaptStep, periodKey]);
+
   if (!challenge) {
     return <View style={[styles.container, { justifyContent: 'center' }]}><ActivityIndicator color={colors.primary} size="large" /></View>;
   }
 
+
   const end = periodEnd ? new Date(periodEnd) : null;
   const total = progress.reduce((acc, r) => acc + (r.value || 0), 0);
-  const pct = challenge.target ? Math.min(100, Math.round((total / challenge.target) * 100)) : 0;
-  const remaining = Math.max(0, challenge.target - total);
+  const effectiveTarget = target ?? challenge.target;
+  const pct = effectiveTarget ? Math.min(100, Math.round((total / effectiveTarget) * 100)) : 0;
+  const remaining = Math.max(0, effectiveTarget - total);
   const sorted = [...progress].sort((a, b) => (b.value || 0) - (a.value || 0));
 
   return (
@@ -53,7 +71,8 @@ export default function ChallengeScreen({ navigation, route }) {
             <View style={styles.totalCard}>
               <View style={styles.totalBarBg}><View style={[styles.totalBarFill, { width: `${pct}%` }]} /></View>
               <Text style={styles.totalText}>
-                {total.toFixed(1)} / {challenge.target} {challenge.unit} — reste {remaining.toFixed(1)} {challenge.unit}
+                {total.toFixed(1)} / {effectiveTarget} {challenge.unit} — reste {remaining.toFixed(1)} {challenge.unit}
+                {groupement?.dynamicTarget && <Text style={styles.timeLeft}>🎯 Objectif dynamique</Text>}
               </Text>
             </View>
         )}

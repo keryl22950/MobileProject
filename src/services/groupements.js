@@ -7,6 +7,8 @@ export async function createGroupement({ groupId, createdBy, name, recurring, re
         recurring,
         recurrenceHours: recurring ? recurrenceHours : null,
         durationHours: recurring ? null : durationHours,
+        dynamicTarget: !!(recurring && dynamicTarget),   // ← nouveau
+        adaptStep: adaptStep ?? 10,                      // ← nouveau
         createdBy,
         createdAt: serverTimestamp(),
     };

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, Pressable, Alert, ActivityIndicator, Switch, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, Pressable, Alert, ActivityIndicator, Switch } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, spacing } from '../theme';
 import { DURATION_PRESETS, RECURRENCE_PRESETS } from '../data/presets';
@@ -21,12 +21,16 @@ export default function CreateGroupementScreen({ navigation, route }) {
     const [showTimePicker, setShowTimePicker] = useState(false);
     const [saving, setSaving] = useState(false);
     const [loaded, setLoaded] = useState(!isEditing);
+    const [dynamicTarget, setDynamicTarget] = useState(false);
+    const [adaptStep, setAdaptStep] = useState(10);
 
     useEffect(() => {
         if (!isEditing) return;
         const unsubscribe = subscribeToGroupement(groupId, groupementId, (g) => {
             setName(g.name);
             setRecurring(g.recurring);
+            setDynamicTarget(!!g.dynamicTarget);      // ← ajouté
+            setAdaptStep(g.adaptStep ?? 10);          // ← ajouté
             if (g.recurring) {
                 const preset = RECURRENCE_PRESETS.find((p) => p.hours === g.recurrenceHours);
                 if (preset) setSelectedRecurrence(preset);
@@ -73,7 +77,9 @@ export default function CreateGroupementScreen({ navigation, route }) {
             if (isEditing) {
                 await updateGroupement({
                     groupId, groupementId,
-                    changes: recurring ? { name: name.trim(), recurrenceHours: hours } : { name: name.trim(), durationHours: hours },
+                    changes: recurring
+                        ? { name: name.trim(), recurrenceHours: hours, ...(dynamicTarget ? { adaptStep } : {}) }
+                        : { name: name.trim(), durationHours: hours },
                 });
                 navigation.goBack();
             } else {
@@ -82,6 +88,8 @@ export default function CreateGroupementScreen({ navigation, route }) {
                     recurrenceHours: recurring ? hours : null,
                     durationHours: recurring ? null : hours,
                     startedAt: recurring ? startDate : null,
+                    dynamicTarget: recurring && dynamicTarget,   // ← ajouté
+                    adaptStep,                                   // ← ajouté
                 });
                 navigation.replace('Groupement', { groupId, groupementId: newId });
             }
@@ -139,6 +147,38 @@ export default function CreateGroupementScreen({ navigation, route }) {
                 )}
             </View>
 
+            {/* ↓ Bloc ajouté : objectif dynamique (uniquement pour un événement récurrent) */}
+            {recurring && (
+                <View>
+                    <View style={styles.switchRow}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.sectionTitle}>Objectif dynamique</Text>
+                            <Text style={styles.hint}>
+                                L'objectif de chaque challenge s'adapte à chaque période selon le résultat de la précédente.
+                            </Text>
+                        </View>
+                        <Switch
+                            value={dynamicTarget}
+                            onValueChange={setDynamicTarget}
+                            disabled={isEditing}
+                            trackColor={{ false: colors.border, true: colors.primary }}
+                        />
+                    </View>
+                    {dynamicTarget && (
+                        <View>
+                            <Text style={styles.hint}>Ajustement à chaque période (hausse si atteint, baisse sinon) :</Text>
+                            <View style={styles.row}>
+                                {[5, 10, 20].map((s) => (
+                                    <Pressable key={s} onPress={() => setAdaptStep(s)} style={[styles.chip, adaptStep === s && styles.chipSelected]}>
+                                        <Text style={styles.chipText}>{s} %</Text>
+                                    </Pressable>
+                                ))}
+                            </View>
+                        </View>
+                    )}
+                </View>
+            )}
+
             {recurring && !isEditing && (
                 <View>
                     <Text style={styles.sectionTitle}>Départ de la première période</Text>
@@ -163,7 +203,7 @@ export default function CreateGroupementScreen({ navigation, route }) {
             )}
 
             <Pressable style={styles.button} onPress={handleSave} disabled={saving}>
-                {saving ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.buttonText}>{isEditing ? 'Enregistrer' : 'Créer le groupement'}</Text>}
+                {saving ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.buttonText}>{isEditing ? 'Enregistrer' : "Créer l'événement"}</Text>}
             </Pressable>
         </ScrollView>
     );
