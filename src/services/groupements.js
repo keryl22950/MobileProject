@@ -1,22 +1,19 @@
-import { collection, doc, addDoc, updateDoc, onSnapshot, orderBy, query, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, orderBy, query, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 
-export async function createGroupement({ groupId, createdBy, name, recurring, recurrenceHours, durationHours, startedAt }) {
+export async function createGroupement({ groupId, createdBy, name, recurring, recurrenceHours, durationHours, startedAt, dynamicTarget, adaptStep }) {
     const base = {
         name,
         recurring,
         recurrenceHours: recurring ? recurrenceHours : null,
         durationHours: recurring ? null : durationHours,
-        dynamicTarget: !!(recurring && dynamicTarget),   // ← nouveau
-        adaptStep: adaptStep ?? 10,                      // ← nouveau
+        dynamicTarget: !!(recurring && dynamicTarget),
+        adaptStep: adaptStep ?? 10,
         createdBy,
         createdAt: serverTimestamp(),
     };
 
     if (recurring) {
-        // L'admin choisit quand démarre la toute première période (peut être
-        // dans le futur, ex : "dimanche prochain à minuit"). Les périodes
-        // suivantes s'enchaînent automatiquement à partir de cette date.
         base.status = 'active';
         base.startedAt = startedAt;
     } else {
@@ -37,6 +34,10 @@ export async function startGroupement({ groupId, groupementId }) {
 
 export async function updateGroupement({ groupId, groupementId, changes }) {
     await updateDoc(doc(db, 'groups', groupId, 'groupements', groupementId), changes);
+}
+
+export async function deleteGroupement({ groupId, groupementId }) {
+    await deleteDoc(doc(db, 'groups', groupId, 'groupements', groupementId));
 }
 
 export function subscribeToGroupements(groupId, callback) {

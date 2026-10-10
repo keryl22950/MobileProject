@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable, ActivityIndicator } from 'react-native';
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
-import { subscribeToChallenge, subscribeToProgress } from '../services/challenges';
-import Screen from '../components/Screen';
+import { subscribeToChallenge, subscribeToProgress, subscribeToActivities } from '../services/challenges';
+import { subscribeToMembers } from '../services/groups';
 import { subscribeToGroupement } from '../services/groupements';
 import { getEffectiveTarget } from '../services/dynamicTargets';
+import Screen from '../components/Screen';
 
 function formatTimeLeft(periodEnd) {
   if (!periodEnd) return '';
@@ -17,27 +18,39 @@ function formatTimeLeft(periodEnd) {
   return `${hours}h restantes`;
 }
 
+function formatDate(ts) {
+  if (!ts) return '';
+  const date = ts?.toDate ? ts.toDate() : new Date(ts);
+  return date.toLocaleDateString('fr-FR') + ' à ' + date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
 export default function ChallengeScreen({ navigation, route }) {
   const { groupId, groupementId, challengeId, periodKey, periodEnd, readOnly } = route.params;
   const { uid } = useAuth();
+
+  // ⚠️ Tous les hooks (useState / useEffect) doivent rester AVANT le "return" anticipé plus bas.
   const [challenge, setChallenge] = useState(null);
   const [progress, setProgress] = useState([]);
-
-  useEffect(() => {
-    const u1 = subscribeToChallenge(groupId, groupementId, challengeId, setChallenge);
-    let u2 = () => {};
-    if (periodKey) {
-      u2 = subscribeToProgress(groupId, groupementId, challengeId, periodKey, setProgress);
-    } else {
-      setProgress([]);
-    }
-    return () => { u1(); u2(); };
-  }, [groupId, groupementId, challengeId, periodKey]);
-
+  const [activities, setActivities] = useState([]);
+  const [members, setMembers] = useState([]);
   const [groupement, setGroupement] = useState(null);
   const [target, setTarget] = useState(null);
 
-  useEffect(() => subscribeToGroupement(groupId, groupementId, setGroupement), [groupId, groupementId]);
+  useEffect(() => {
+    const u1 = subscribeToChallenge(groupId, groupementId, challengeId, setChallenge);
+    const u2 = subscribeToMembers(groupId, setMembers);
+    const u3 = subscribeToGroupement(groupId, groupementId, setGroupement);
+    let u4 = () => {};
+    let u5 = () => {};
+    if (periodKey) {
+      u4 = subscribeToProgress(groupId, groupementId, challengeId, periodKey, setProgress);
+      u5 = subscribeToActivities(groupId, groupementId, challengeId, periodKey, setActivities);
+    } else {
+      setProgress([]);
+      setActivities([]);
+    }
+    return () => { u1(); u2(); u3(); u4(); u5(); };
+  }, [groupId, groupementId, challengeId, periodKey]);
 
   useEffect(() => {
     if (!challenge || !groupement || !periodKey) return;
@@ -52,10 +65,11 @@ export default function ChallengeScreen({ navigation, route }) {
     return <View style={[styles.container, { justifyContent: 'center' }]}><ActivityIndicator color={colors.primary} size="large" /></View>;
   }
 
-
+  const me = members.find((m) => m.id === uid);
+  const isAdmin = me?.role === 'creator' || me?.role === 'admin';
   const end = periodEnd ? new Date(periodEnd) : null;
-  const total = progress.reduce((acc, r) => acc + (r.value || 0), 0);
   const effectiveTarget = target ?? challenge.target;
+  const total = progress.reduce((acc, r) => acc + (r.value || 0), 0);
   const pct = effectiveTarget ? Math.min(100, Math.round((total / effectiveTarget) * 100)) : 0;
   const remaining = Math.max(0, effectiveTarget - total);
   const sorted = [...progress].sort((a, b) => (b.value || 0) - (a.value || 0));
@@ -65,24 +79,26 @@ export default function ChallengeScreen({ navigation, route }) {
         <View style={styles.header}>
           <Text style={styles.challengeTitle}>{challenge.icon} {challenge.label}</Text>
           {!readOnly && periodKey && <Text style={styles.timeLeft}>⏳ {formatTimeLeft(end)}</Text>}
+          {groupement?.dynamicTarget && <Text style={styles.timeLeft}>🎯 Objectif dynamique</Text>}
         </View>
+
+        {!readOnly && isAdmin && (
+            <View style={styles.adminRow}>
+              <Pressable style={styles.smallButton} onPress={() => navigation.navigate('CreateChallenge', { groupId, groupementId, challengeId })}>
+                <Text style={styles.buttonText}>✏️ Modifier</Text>
+              </Pressable>
+            </View>
+        )}
 
         {periodKey && (
             <View style={styles.totalCard}>
               <View style={styles.totalBarBg}><View style={[styles.totalBarFill, { width: `${pct}%` }]} /></View>
               <Text style={styles.totalText}>
                 {total.toFixed(1)} / {effectiveTarget} {challenge.unit} — reste {remaining.toFixed(1)} {challenge.unit}
-                {groupement?.dynamicTarget && <Text style={styles.timeLeft}>🎯 Objectif dynamique</Text>}
               </Text>
             </View>
         )}
-        {!readOnly && isAdmin && (
-            <View style={styles.adminRow}>
-              <Pressable style={[styles.smallButton, styles.buttonSecondary]} onPress={() => navigation.navigate('CreateChallenge', { groupId, groupementId, challengeId })}>
-                <Text style={styles.buttonText}>✏️ Modifier</Text>
-              </Pressable>
-            </View>
-        )}
+
         {!periodKey && !readOnly ? (
             <Text style={styles.empty}>Cet événement n'a pas encore démarré — reviens une fois qu'il aura débuté !</Text>
         ) : (
@@ -104,6 +120,22 @@ export default function ChallengeScreen({ navigation, route }) {
                     );
                   }}
               />
+
+              <Text style={[styles.sectionTitle, { marginTop: spacing.md }]}>Activités récentes</Text>
+              {activities.length === 0 ? (
+                  <Text style={styles.empty}>Aucune activité enregistrée.</Text>
+              ) : (
+                  activities.map((a) => (
+                      <View key={a.id} style={styles.activityRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.activityName}>{a.userName}</Text>
+                          <Text style={styles.activityDate}>{formatDate(a.createdAt)}</Text>
+                        </View>
+                        <Text style={styles.activityValue}>+{a.value} {challenge.unit}</Text>
+                      </View>
+                  ))
+              )}
+
               {!readOnly && (
                   <Pressable style={styles.button} onPress={() => navigation.navigate('LogActivity', { groupId, groupementId, challengeId, periodKey })}>
                     <Text style={styles.buttonText}>+ Enregistrer une activité</Text>
@@ -117,9 +149,11 @@ export default function ChallengeScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: spacing.md },
-  header: { marginBottom: spacing.md },
+  header: { marginBottom: spacing.sm },
   challengeTitle: { color: colors.text, fontSize: 18, fontWeight: '700' },
   timeLeft: { color: colors.primary, fontSize: 13, fontWeight: '600', marginTop: 4 },
+  adminRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  smallButton: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center', backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
   totalCard: { backgroundColor: colors.card, borderRadius: 12, padding: spacing.md, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md },
   totalBarBg: { height: 10, backgroundColor: colors.border, borderRadius: 5, overflow: 'hidden', marginBottom: spacing.sm },
   totalBarFill: { height: 10, backgroundColor: colors.success, borderRadius: 5 },
@@ -131,6 +165,10 @@ const styles = StyleSheet.create({
   rank: { color: colors.muted, width: 28, fontWeight: '700' },
   memberName: { color: colors.text, fontSize: 14, fontWeight: '600', flex: 1 },
   memberValue: { color: colors.muted, fontSize: 13, fontWeight: '600' },
+  activityRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: 10, padding: spacing.sm, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.xs },
+  activityName: { color: colors.text, fontSize: 13, fontWeight: '600' },
+  activityDate: { color: colors.muted, fontSize: 11, marginTop: 2 },
+  activityValue: { color: colors.primary, fontWeight: '700' },
   button: { backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: spacing.md },
   buttonText: { color: colors.primaryText, fontWeight: '600', fontSize: 14 },
 });

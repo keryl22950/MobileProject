@@ -1,4 +1,19 @@
-import { collection, doc, addDoc, setDoc, getDoc, getDocs, query, where, orderBy, limit, increment, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import {
+    collection,
+    doc,
+    addDoc,
+    setDoc,
+    getDoc,
+    getDocs,
+    query,
+    where,
+    orderBy,
+    limit,
+    increment,
+    onSnapshot,
+    serverTimestamp,
+    deleteDoc
+} from 'firebase/firestore';
 import { db } from './firebase';
 
 export async function upsertUserProfile({ uid, displayName }) {
@@ -7,6 +22,10 @@ export async function upsertUserProfile({ uid, displayName }) {
         nameLower: displayName.toLowerCase(),
         updatedAt: serverTimestamp(),
     }, { merge: true });
+}
+
+export async function removeFriend({ uid, friendUid }) {
+    await deleteDoc(doc(db, 'users', uid, 'friends', friendUid));
 }
 
 export async function searchUsersByName(prefix) {

@@ -101,11 +101,23 @@ export default function GroupementScreen({ navigation, route }) {
                     return (
                         <Pressable
                             style={styles.challengeCard}
-                            onPress={() => navigation.navigate('Challenge', { /* ... inchangé ... */ })}
+                            onPress={() => navigation.navigate('Challenge', {
+                                groupId,
+                                groupementId,
+                                challengeId: item.id,
+                                periodKey: started ? period.periodKey : undefined,
+                                periodEnd: started ? period.periodEnd?.toISOString() : undefined,
+                            })}
                             onLongPress={isAdmin ? () => {
                                 Alert.alert('Supprimer ce challenge ?', `"${item.label}" sera définitivement supprimé.`, [
                                     { text: 'Annuler', style: 'cancel' },
-                                    { text: 'Supprimer', style: 'destructive', onPress: () => deleteChallenge({ groupId, groupementId, challengeId: item.id }) },
+                                    { text: 'Supprimer', style: 'destructive', onPress: async () => {
+                                            try {
+                                                await deleteChallenge({ groupId, groupementId, challengeId: item.id });
+                                            } catch (err) {
+                                                Alert.alert('Erreur', err.message);
+                                            }
+                                        }},
                                 ]);
                             } : undefined}
                         >

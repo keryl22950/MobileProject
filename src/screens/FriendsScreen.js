@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, FlatList, Alert } from 'react-native';
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
-import { searchUsersByName, addFriend, subscribeToFriends } from '../services/users';
+import { searchUsersByName, addFriend, removeFriend, subscribeToFriends } from '../services/users';
 
 export default function FriendsScreen({ navigation }) {
     const { uid } = useAuth();
@@ -31,6 +31,23 @@ export default function FriendsScreen({ navigation }) {
         } catch (err) {
             Alert.alert('Erreur', err.message);
         }
+    }
+
+    function handleRemove(friend) {
+        Alert.alert(
+            `Retirer ${friend.displayName} ?`,
+            "Il ne sera plus dans ta liste d'amis. Tu pourras le rajouter plus tard.",
+            [
+                { text: 'Annuler', style: 'cancel' },
+                { text: 'Retirer', style: 'destructive', onPress: async () => {
+                        try {
+                            await removeFriend({ uid, friendUid: friend.id });
+                        } catch (err) {
+                            Alert.alert('Erreur', err.message);
+                        }
+                    }},
+            ]
+        );
     }
 
     const friendIds = friends.map((f) => f.id);
@@ -64,13 +81,18 @@ export default function FriendsScreen({ navigation }) {
             )}
 
             <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Mes amis</Text>
+            <Text style={styles.already}>Appui long sur un ami pour le retirer</Text>eas
             <FlatList
                 data={friends}
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={{ gap: spacing.sm }}
                 ListEmptyComponent={<Text style={styles.empty}>Pas encore d'amis ajoutés.</Text>}
                 renderItem={({ item }) => (
-                    <Pressable style={styles.row} onPress={() => navigation.navigate('FriendProfile', { friendUid: item.id, friendName: item.displayName })}>
+                    <Pressable
+                        style={styles.row}
+                        onPress={() => navigation.navigate('FriendProfile', { friendUid: item.id, friendName: item.displayName })}
+                        onLongPress={() => handleRemove(item)}
+                    >
                         <Text style={styles.name}>{item.displayName}</Text>
                         <Text style={styles.chevron}>›</Text>
                     </Pressable>

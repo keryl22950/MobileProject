@@ -3,11 +3,11 @@ import {View, Text, StyleSheet, FlatList, Pressable, Share, ActivityIndicator, A
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { subscribeToGroup, subscribeToMembers, leaveGroup } from '../services/groups';
-import { subscribeToGroupements, getCurrentPeriod } from '../services/groupements';
-import { deleteGroupement } from '../services/groupements';
+import { subscribeToGroupements, getCurrentPeriod, deleteGroupement } from '../services/groupements';
 import { useGroupementFill } from '../hooks/useGroupementFill';
 import Screen from '../components/Screen';
 import {expo as group} from "../../app.config";
+
 
 function GroupementCard({ groupId, groupement, isAdmin, onPress, onDelete }) {
     const { overallPct } = useGroupementFill(groupId, groupement.id, groupement);
