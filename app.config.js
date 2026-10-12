@@ -5,7 +5,7 @@ module.exports = {
         name: IS_DEV ? 'ChallengeApp (Dev)' : 'ChallengeApp',
         slug: 'challenge-app',
         scheme: 'challengeapp',
-        version: '1.0.0',
+        version: '1.1.0',
         orientation: 'portrait',
         userInterfaceStyle: 'automatic',
         splash: { backgroundColor: '#111827' },
@@ -25,14 +25,21 @@ module.exports = {
         },
         android: {
             package: IS_DEV ? 'com.tonpseudo.challengeapp.dev' : 'com.tonpseudo.challengeapp',
-            permissions: ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION'],
+            permissions: [
+                'ACCESS_FINE_LOCATION',
+                'ACCESS_COARSE_LOCATION',
+                'android.permission.health.READ_EXERCISE',
+                'android.permission.health.READ_DISTANCE',
+            ],
         },
         plugins: [
             ['expo-location', { locationAlwaysAndWhenInUsePermission: "L'app utilise ta position pour mesurer la distance parcourue." }],
+            'expo-health-connect',
             ['expo-build-properties', {
                 android: {
                     enableProguardInReleaseBuilds: true,
                     enableShrinkResourcesInReleaseBuilds: true,
+                    minSdkVersion: 26,
                 },
             }],
         ],

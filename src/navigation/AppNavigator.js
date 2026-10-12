@@ -1,6 +1,5 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-
 import HomeScreen from '../screens/HomeScreen';
 import CreateGroupScreen from '../screens/CreateGroupScreen';
 import JoinGroupScreen from '../screens/JoinGroupScreen';
@@ -19,6 +18,7 @@ import QuickLogScreen from '../screens/QuickLogScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import FriendsScreen from '../screens/FriendsScreen';
 import FriendProfileScreen from '../screens/FriendProfileScreen';
+import ImportHealthConnectScreen from '../screens/ImportHealthConnectScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -50,6 +50,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profil' }} />
             <Stack.Screen name="Friends" component={FriendsScreen} options={{ title: 'Amis' }} />
             <Stack.Screen name="FriendProfile" component={FriendProfileScreen} options={{ title: 'Profil' }} />
+            <Stack.Screen name="ImportHealthConnect" component={ImportHealthConnectScreen} options={{ title: 'Depuis ma montre' }} />
         </Stack.Navigator>
     );
 }

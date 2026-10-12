@@ -73,9 +73,9 @@ export function subscribeToActivities(groupId, groupementId, challengeId, period
 // + cumul) — sans toucher au profil. Utilisé par l'enregistrement rapide quand
 // une même activité s'applique à plusieurs challenges à la fois, pour éviter
 // de dupliquer l'entrée dans l'historique du profil.
-async function writeGroupSideProgress({ groupId, groupementId, challengeId, periodKey, uid, userName, value }) {
+async function writeGroupSideProgress({ groupId, groupementId, challengeId, periodKey, uid, userName, value, date }) {
   await addDoc(challengeSubCollection(groupId, groupementId, challengeId, 'periods', periodKey, 'activities'), {
-    userId: uid, userName, value, createdAt: serverTimestamp(),
+    userId: uid, userName, value, createdAt: date ?? serverTimestamp(),
   });
   await setDoc(
       challengeSubDoc(groupId, groupementId, challengeId, 'periods', periodKey, 'progress', uid),
@@ -89,8 +89,8 @@ async function writeGroupSideProgress({ groupId, groupementId, challengeId, peri
   );
 }
 
-export async function applyProgressOnly({ groupId, groupementId, challengeId, periodKey, uid, userName, value }) {
-  await writeGroupSideProgress({ groupId, groupementId, challengeId, periodKey, uid, userName, value });
+export async function applyProgressOnly({ groupId, groupementId, challengeId, periodKey, uid, userName, value, date }) {
+  await writeGroupSideProgress({ groupId, groupementId, challengeId, periodKey, uid, userName, value, date });
 }
 
 // Utilisé par LogActivityScreen (une seule cible) : met à jour le groupe ET le profil.

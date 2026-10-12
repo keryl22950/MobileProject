@@ -2,11 +2,13 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from './firebase';
 import { getCurrentPeriod } from './groupements';
 
-// Parcourt tous les groupes de l'utilisateur pour trouver les challenges
-// actifs correspondant à un type d'activité donné (presetId).
-export async function findActiveChallengesForPreset({ uid, presetId }) {
+// Trouve les challenges qui peuvent recevoir une activité du type `presetId`
+// réalisée à la date `at` (maintenant par défaut). Pour ne jamais réécrire
+// l'histoire, l'activité doit tomber dans la période EN COURS de l'événement.
+export async function findActiveChallengesForPreset({ uid, presetId, at = new Date() }) {
     const groupsSnap = await getDocs(query(collection(db, 'groups'), where('memberIds', 'array-contains', uid)));
     const results = [];
+    const now = new Date();
 
     for (const groupDoc of groupsSnap.docs) {
         const group = { id: groupDoc.id, ...groupDoc.data() };
@@ -14,9 +16,13 @@ export async function findActiveChallengesForPreset({ uid, presetId }) {
 
         for (const groupementDoc of groupementsSnap.docs) {
             const groupement = { id: groupementDoc.id, ...groupementDoc.data() };
-            const period = getCurrentPeriod(groupement);
-            if (!period || period.notStarted) continue;
-            if (!groupement.recurring && period.periodEnd.getTime() < Date.now()) continue;
+            const current = getCurrentPeriod(groupement, now);
+            const atPeriod = getCurrentPeriod(groupement, at);
+
+            if (!current || current.notStarted) continue;
+            if (!atPeriod || atPeriod.notStarted) continue;
+            if (atPeriod.periodKey !== current.periodKey) continue;
+            if (!groupement.recurring && current.periodEnd.getTime() < now.getTime()) continue;
 
             const challengesSnap = await getDocs(
                 collection(db, 'groups', group.id, 'groupements', groupement.id, 'challenges')
@@ -33,7 +39,7 @@ export async function findActiveChallengesForPreset({ uid, presetId }) {
                         challengeId: challengeDoc.id,
                         challengeLabel: challenge.label,
                         unit: challenge.unit,
-                        periodKey: period.periodKey,
+                        periodKey: current.periodKey,
                     });
                 }
             });

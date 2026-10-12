@@ -62,15 +62,26 @@ export function subscribeToUserStats(uid, callback) {
     });
 }
 
-// Enregistre une activité au niveau du profil (historique façon Strava) et met
-// à jour le cumul par type. groupId/groupementId/challengeId sont optionnels :
-// null quand l'activité n'a pu être rattachée à aucun challenge.
-export async function recordUserActivity({ uid, presetId, label, icon, unit, value, groupId, groupementId, challengeId }) {
-    await addDoc(collection(db, 'users', uid, 'activities'), {
+// Enregistre une activité dans l'historique du profil. Avec `externalId`
+// (import depuis une montre), le document a un identifiant fixe : une
+// séance déjà importée est ignorée (retourne false).
+export async function recordUserActivity({
+                                             uid, presetId, label, icon, unit, value, groupId, groupementId, challengeId,
+                                             date, externalId, source, durationMin,
+                                         }) {
+    const data = {
         presetId, label, icon, unit, value,
         groupId: groupId || null, groupementId: groupementId || null, challengeId: challengeId || null,
-        createdAt: serverTimestamp(),
-    });
+        createdAt: date ?? serverTimestamp(),
+    };
+
+    if (externalId) {
+        const ref = doc(db, 'users', uid, 'activities', externalId);
+        if ((await getDoc(ref)).exists()) return false;
+        await setDoc(ref, { ...data, imported: true, externalId, source: source ?? null, durationMin: durationMin ?? null });
+    } else {
+        await addDoc(collection(db, 'users', uid, 'activities'), data);
+    }
 
     const statsKey = presetId === 'custom' ? (challengeId || label) : presetId;
     await setDoc(
@@ -78,6 +89,12 @@ export async function recordUserActivity({ uid, presetId, label, icon, unit, val
         { icon, label, unit, total: increment(value), updatedAt: serverTimestamp() },
         { merge: true }
     );
+    return true;
+}
+
+export async function getImportedExternalIds(uid) {
+    const snap = await getDocs(query(collection(db, 'users', uid, 'activities'), where('imported', '==', true)));
+    return new Set(snap.docs.map((d) => d.data().externalId));
 }
 
 export function subscribeToUserActivities(uid, callback) {

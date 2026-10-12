@@ -60,15 +60,16 @@ export function subscribeToGroupement(groupId, groupementId, callback) {
 // Calcule la période actuelle. Cas particuliers :
 // - non récurrent pas encore démarré → null
 // - récurrent dont la date de départ est dans le futur → { notStarted: true, periodEnd: <date de départ> }
-export function getCurrentPeriod(groupement) {
+export function getCurrentPeriod(groupement, at = new Date()) {
     if (!groupement || !groupement.startedAt) return null;
     const startedAt = groupement.startedAt.toDate
         ? groupement.startedAt.toDate()
         : new Date(groupement.startedAt);
     const periodLengthHours = groupement.recurring ? groupement.recurrenceHours : groupement.durationHours;
     const periodLengthMs = periodLengthHours * 60 * 60 * 1000;
+    const atMs = at.getTime();
 
-    if (Date.now() < startedAt.getTime()) {
+    if (atMs < startedAt.getTime()) {
         return { periodKey: null, periodIndex: -1, periodStart: null, periodEnd: startedAt, notStarted: true };
     }
 
@@ -81,7 +82,7 @@ export function getCurrentPeriod(groupement) {
         };
     }
 
-    const elapsed = Date.now() - startedAt.getTime();
+    const elapsed = atMs - startedAt.getTime();
     const periodIndex = Math.floor(elapsed / periodLengthMs);
     const periodStart = new Date(startedAt.getTime() + periodIndex * periodLengthMs);
     return {

@@ -46,6 +46,10 @@ export default function HomeScreen({ navigation }) {
           <Text style={styles.buttonText}>⚡ Enregistrer une activité</Text>
         </Pressable>
 
+        <Pressable style={styles.watchButton} onPress={() => navigation.navigate('ImportHealthConnect')}>
+          <Text style={styles.buttonText}>⌚ Importer depuis ma montre</Text>
+        </Pressable>
+
         <FlatList
             data={groups}
             keyExtractor={(item) => item.id}
@@ -100,4 +104,5 @@ const styles = StyleSheet.create({
   buttonPrimary: { backgroundColor: colors.primary },
   buttonSecondary: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
   buttonText: { color: colors.primaryText, fontWeight: '600', fontSize: 15 },
+  watchButton: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: spacing.sm },
 });
