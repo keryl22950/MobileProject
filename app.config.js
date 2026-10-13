@@ -34,7 +34,7 @@ module.exports = {
         },
         plugins: [
             ['expo-location', { locationAlwaysAndWhenInUsePermission: "L'app utilise ta position pour mesurer la distance parcourue." }],
-            'expo-health-connect',
+            'react-native-health-connect',
             ['expo-build-properties', {
                 android: {
                     enableProguardInReleaseBuilds: true,
