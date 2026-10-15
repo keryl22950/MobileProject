@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, FlatList, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { ensureHealthConnectReady, readRecentSessions } from '../services/healthConnect';
-import { findActiveChallengesForPreset } from '../services/quickLog';
+import { findChallengesForSession } from '../services/quickLog';
 import { applyProgressOnly } from '../services/challenges';
 import { recordUserActivity, getImportedExternalIds } from '../services/users';
 import { CHALLENGE_PRESETS } from '../data/presets';
@@ -15,6 +15,7 @@ export default function ImportHealthConnectScreen() {
     const [error, setError] = useState(null);
     const [sessions, setSessions] = useState([]);
     const [importingId, setImportingId] = useState(null);
+    const [manual, setManual] = useState({});
 
     useEffect(() => {
         (async () => {
@@ -32,12 +33,41 @@ export default function ImportHealthConnectScreen() {
 
     async function handleImport(session) {
         const preset = CHALLENGE_PRESETS.find((p) => p.id === session.presetId);
-        if (!preset || !session.distanceKm) return;
+        const km = session.distanceKm ?? Number((manual[session.id] || '').replace(',', '.'));
+        if (!preset || !km || km <= 0) return;
+        const value = Number(km.toFixed(2));
 
         setImportingId(session.id);
         try {
-            const value = Number(session.distanceKm.toFixed(2));
+            const { matches, skipped } = await findChallengesForSession({ uid, presetId: preset.id, at: session.startTime });
 
+            const parts = [];
+            if (matches.length > 0) {
+                parts.push('Comptera pour :\n' + matches.map((m) => `• ${m.groupName} → ${m.groupementName} (${m.challengeLabel})`).join('\n'));
+            }
+            if (skipped.length > 0) {
+                parts.push('Ne comptera pas :\n' + skipped.map((s) => `• ${s.label} : ${s.reason}`).join('\n'));
+            }
+            if (parts.length === 0) parts.push("Tu n'es dans aucun groupe pour l'instant.");
+
+            Alert.alert(
+                `Importer ${value} km ?`,
+                parts.join('\n\n') + '\n\nDans tous les cas, la séance est ajoutée à ton profil.',
+                [
+                    { text: 'Annuler', style: 'cancel' },
+                    { text: 'Importer', onPress: () => confirmImport(session, preset, value, matches) },
+                ]
+            );
+        } catch (err) {
+            Alert.alert('Erreur', err.message);
+        } finally {
+            setImportingId(null);
+        }
+    }
+
+    async function confirmImport(session, preset, value, matches) {
+        setImportingId(session.id);
+        try {
             // 1. Profil d'abord (identifiant fixe : jamais de doublon).
             const added = await recordUserActivity({
                 uid, presetId: preset.id, label: preset.label, icon: preset.icon, unit: preset.unit, value,
@@ -49,7 +79,6 @@ export default function ImportHealthConnectScreen() {
             }
 
             // 2. Puis les challenges dont la période en cours contient cette séance.
-            const matches = await findActiveChallengesForPreset({ uid, presetId: preset.id, at: session.startTime });
             await Promise.all(matches.map((m) =>
                 applyProgressOnly({
                     groupId: m.groupId, groupementId: m.groupementId, challengeId: m.challengeId,
@@ -58,12 +87,6 @@ export default function ImportHealthConnectScreen() {
             ));
 
             setSessions((prev) => prev.filter((s) => s.id !== session.id));
-            Alert.alert(
-                'Importé',
-                matches.length > 0
-                    ? `${value} km ajoutés à ton profil et à ${matches.length} challenge(s).`
-                    : `${value} km ajoutés à ton profil (aucun challenge en cours ne correspondait).`
-            );
         } catch (err) {
             Alert.alert('Erreur', err.message);
         } finally {
@@ -97,20 +120,38 @@ export default function ImportHealthConnectScreen() {
                 renderItem={({ item }) => {
                     const preset = CHALLENGE_PRESETS.find((p) => p.id === item.presetId);
                     if (!preset) return null;
-                    const canImport = !!item.distanceKm;
+                    const hasDistance = !!item.distanceKm;
+                    const typed = Number((manual[item.id] || '').replace(',', '.'));
+                    const canImport = hasDistance || typed > 0;
                     return (
-                        <Pressable style={[styles.row, !canImport && { opacity: 0.5 }]} onPress={() => handleImport(item)} disabled={!canImport || importingId === item.id}>
+                        <View style={styles.row}>
                             <Text style={styles.icon}>{preset.icon}</Text>
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.label}>{preset.label} · {item.sourceLabel}</Text>
                                 <Text style={styles.sub}>
                                     {item.startTime.toLocaleDateString('fr-FR')} {item.startTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                                     {' · '}{item.durationMin} min
-                                    {' · '}{canImport ? `${item.distanceKm.toFixed(2)} km` : 'pas de distance'}
+                                    {' · '}{hasDistance ? `${item.distanceKm.toFixed(2)} km` : 'pas de distance'}
                                 </Text>
+                                {!hasDistance && (
+                                    <TextInput
+                                        style={styles.input}
+                                        keyboardType="numeric"
+                                        placeholder="Distance en km"
+                                        placeholderTextColor={colors.muted}
+                                        value={manual[item.id] || ''}
+                                        onChangeText={(t) => setManual((prev) => ({ ...prev, [item.id]: t }))}
+                                    />
+                                )}
                             </View>
-                            {importingId === item.id ? <ActivityIndicator color={colors.primary} /> : canImport && <Text style={styles.action}>Importer</Text>}
-                        </Pressable>
+                            {importingId === item.id ? (
+                                <ActivityIndicator color={colors.primary} />
+                            ) : (
+                                <Pressable onPress={() => handleImport(item)} disabled={!canImport}>
+                                    <Text style={[styles.action, !canImport && { opacity: 0.4 }]}>Importer</Text>
+                                </Pressable>
+                            )}
+                        </View>
                     );
                 }}
             />
@@ -128,4 +169,5 @@ const styles = StyleSheet.create({
     label: { color: colors.text, fontWeight: '600' },
     sub: { color: colors.muted, fontSize: 12, marginTop: 2 },
     action: { color: colors.primary, fontWeight: '700' },
+    input: { backgroundColor: colors.background, borderRadius: 8, padding: spacing.sm, color: colors.text, borderWidth: 1, borderColor: colors.border, marginTop: spacing.sm },
 });

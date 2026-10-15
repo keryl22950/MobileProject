@@ -36,13 +36,17 @@ const SOURCE_LABELS = {
 
 function toMeters(length) {
     if (!length) return 0;
+    // Format de ta version de la librairie : { inMeters, inKilometers, ... }
+    if (typeof length.inMeters === 'number') return length.inMeters;
+    if (typeof length.inKilometers === 'number') return length.inKilometers * 1000;
+    // Repli sur l'ancien format { value, unit }
     const v = length.value ?? 0;
     switch (length.unit) {
         case 'kilometers': return v * 1000;
         case 'miles': return v * 1609.344;
         case 'feet': return v * 0.3048;
         case 'inches': return v * 0.0254;
-        default: return v; // 'meters'
+        default: return v;
     }
 }
 
@@ -79,10 +83,18 @@ export async function readRecentSessions({ days = 7 } = {}) {
 
         const start = new Date(s.startTime);
         const end = new Date(s.endTime);
-        // Distance = somme des relevés entièrement inclus dans la séance (1 min de tolérance).
-        const meters = distances
-            .filter((d) => new Date(d.startTime) >= start && new Date(d.endTime).getTime() <= end.getTime() + 60000)
-            .reduce((acc, d) => acc + toMeters(d.distance), 0);
+        // Distance = relevés qui chevauchent la séance, au prorata du temps commun.
+        // On ignore les relevés beaucoup plus longs que la séance (totaux de la journée).
+        const sessionMs = Math.max(end - start, 1);
+        const meters = distances.reduce((acc, d) => {
+            const dStart = new Date(d.startTime);
+            const dEnd = new Date(d.endTime);
+            const dMs = dEnd - dStart;
+            if (dMs <= 0 || dMs > Math.max(sessionMs * 2, 10 * 60 * 1000)) return acc;
+            const overlap = Math.min(dEnd, end) - Math.max(dStart, start);
+            if (overlap <= 0) return acc;
+            return acc + toMeters(d.distance) * (overlap / dMs);
+        }, 0);
 
         const origin = s.metadata?.dataOrigin;
         return {
