@@ -1,0 +1,109 @@
+rules_version = '2';
+service cloud.firestore {
+    match /databases/{database}/documents {
+
+        function isSignedIn() { return request.auth != null; }
+
+        function groupData(groupId) {
+            return get(/databases/$(database)/documents/groups/$(groupId)).data;
+        }
+
+        function isGroupMember(groupId) {
+            return isSignedIn() && request.auth.uid in groupData(groupId).memberIds;
+        }
+
+        function isGroupAdmin(groupId) {
+            return isSignedIn() &&
+                    get(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.role in ['creator', 'admin'];
+        }
+
+        match /groups/{groupId} {
+            allow get, list: if isSignedIn();
+
+            allow create: if isSignedIn()
+                && request.resource.data.ownerId == request.auth.uid
+                && request.resource.data.memberIds.size() == 1
+                && request.auth.uid in request.resource.data.memberIds;
+
+            allow update: if
+            // Un membre peut modifier le groupe, mais seul le créateur actuel peut changer le propriétaire.
+                    (request.auth.uid in resource.data.memberIds
+                        && (request.resource.data.ownerId == resource.data.ownerId
+                            || resource.data.ownerId == request.auth.uid))
+                    // Rejoindre : un non-membre peut uniquement s'ajouter lui-même à memberIds.
+                    || (isSignedIn()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds'])
+                    && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
+                    && request.resource.data.memberIds.hasAll(resource.data.memberIds)
+                    && request.auth.uid in request.resource.data.memberIds);
+
+            allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+
+            match /members/{memberId} {
+                allow read: if isGroupMember(groupId);
+                allow create: if isSignedIn() && request.auth.uid == memberId
+                    && (request.resource.data.role == 'participant'
+                        || (request.resource.data.role == 'creator' && groupData(groupId).ownerId == request.auth.uid));
+                allow update: if isGroupAdmin(groupId)
+                    || (request.auth.uid == memberId && request.resource.data.role == resource.data.role);
+                allow delete: if request.auth.uid == memberId || isGroupAdmin(groupId);
+            }
+
+            match /groupements/{groupementId} {
+                allow read: if isGroupMember(groupId);
+                allow create, update, delete: if isGroupAdmin(groupId);
+
+                match /challenges/{challengeId} {
+                    allow read: if isGroupMember(groupId);
+                    allow create, update, delete: if isGroupAdmin(groupId);
+
+                    // Objectif d'une période (événements dynamiques) : création seule, une fois.
+                    match /periods/{periodId} {
+                        allow read: if isGroupMember(groupId);
+                        allow create: if isGroupMember(groupId) && request.resource.data.target is number;
+                    }
+
+                    match /periods/{periodId}/progress/{uid} {
+                        allow read: if isGroupMember(groupId);
+                        allow write: if isSignedIn() && request.auth.uid == uid;
+                    }
+
+                    match /periods/{periodId}/activities/{activityId} {
+                        allow read: if isGroupMember(groupId);
+                        allow create: if isGroupMember(groupId) && request.resource.data.userId == request.auth.uid;
+                    }
+
+                    match /cumulative/{uid} {
+                        allow read: if isGroupMember(groupId);
+                        allow write: if isSignedIn() && request.auth.uid == uid;
+                    }
+                }
+            }
+
+            match /messages/{messageId} {
+                allow read: if isGroupMember(groupId);
+                allow create: if isGroupMember(groupId) && request.resource.data.userId == request.auth.uid;
+            }
+        }
+
+        match /users/{uid} {
+            allow read: if isSignedIn();
+            allow create, update: if isSignedIn() && request.auth.uid == uid;
+            allow delete: if false;
+
+            match /friends/{friendId} {
+                allow read, write: if isSignedIn() && request.auth.uid == uid;
+            }
+
+            match /stats/{statId} {
+                allow read: if isSignedIn();
+                allow write: if isSignedIn() && request.auth.uid == uid;
+            }
+
+            // Historique d'activités : privé pour l'instant (à ouvrir aux amis le jour du profil façon Strava).
+            match /activities/{activityId} {
+                allow read, write: if isSignedIn() && request.auth.uid == uid;
+            }
+        }
+    }
+}
