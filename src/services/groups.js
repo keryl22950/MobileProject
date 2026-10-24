@@ -1,4 +1,4 @@
-import {
+import { arrayUnion, arrayRemove,
   collection,
   doc,
   addDoc,
@@ -49,28 +49,24 @@ export async function createGroup({ uid, userName, name }) {
 
 export async function joinGroupByCode({ uid, userName, code }) {
   const cleanCode = code.trim().toUpperCase();
-  const q = query(collection(db, 'groups'), where('inviteCode', '==', cleanCode));
-  const snap = await getDocs(q);
+  const snap = await getDocs(query(collection(db, 'groups'), where('inviteCode', '==', cleanCode)));
 
   if (snap.empty) {
     throw new Error('Aucun groupe ne correspond à ce code.');
   }
 
   const groupDoc = snap.docs[0];
-  const existingMemberIds = groupDoc.data().memberIds || [];
+  // Déjà membre : rien à écrire (et surtout pas de rôle à écraser).
+  if ((groupDoc.data().memberIds || []).includes(uid)) return groupDoc.id;
 
-  if (!existingMemberIds.includes(uid)) {
-    await updateDoc(doc(db, 'groups', groupDoc.id), {
-      memberIds: [...existingMemberIds, uid],
-    });
-  }
+  // arrayUnion : atomique, même si deux personnes rejoignent en même temps.
+  await updateDoc(doc(db, 'groups', groupDoc.id), { memberIds: arrayUnion(uid) });
 
-  // Les personnes qui rejoignent via code arrivent en tant que "participant".
-  await setDoc(
-    doc(db, 'groups', groupDoc.id, 'members', uid),
-    { name: userName, role: 'participant', joinedAt: serverTimestamp() },
-    { merge: true }
-  );
+  await setDoc(doc(db, 'groups', groupDoc.id, 'members', uid), {
+    name: userName,
+    role: 'participant',
+    joinedAt: serverTimestamp(),
+  });
 
   return groupDoc.id;
 }
@@ -151,15 +147,10 @@ export async function updateGroup({ groupId, changes }) {
 // rôle est transmis en priorité à un admin existant, sinon au premier
 // participant restant.
 export async function leaveGroup({ groupId, uid }) {
-  const [membersSnap, groupSnap] = await Promise.all([
-    getDocs(collection(db, 'groups', groupId, 'members')),
-    getDoc(doc(db, 'groups', groupId)),
-  ]);
+  const membersSnap = await getDocs(collection(db, 'groups', groupId, 'members'));
   const members = membersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
   const me = members.find((m) => m.id === uid);
   const remaining = members.filter((m) => m.id !== uid);
-  const currentMemberIds = groupSnap.data()?.memberIds || [];
-  const newMemberIds = currentMemberIds.filter((id) => id !== uid);
 
   if (remaining.length === 0) {
     await deleteDoc(doc(db, 'groups', groupId, 'members', uid));
@@ -167,12 +158,14 @@ export async function leaveGroup({ groupId, uid }) {
     return { groupDeleted: true };
   }
 
+  // L'ordre compte : promotion et mise à jour du groupe AVANT de supprimer mon propre
+  // document membre, sinon les règles ne me reconnaissent plus comme admin.
   if (me?.role === 'creator') {
     const nextCreator = remaining.find((m) => m.role === 'admin') || remaining[0];
     await setDoc(doc(db, 'groups', groupId, 'members', nextCreator.id), { role: 'creator' }, { merge: true });
-    await updateDoc(doc(db, 'groups', groupId), { memberIds: newMemberIds, ownerId: nextCreator.id });
+    await updateDoc(doc(db, 'groups', groupId), { memberIds: arrayRemove(uid), ownerId: nextCreator.id });
   } else {
-    await updateDoc(doc(db, 'groups', groupId), { memberIds: newMemberIds });
+    await updateDoc(doc(db, 'groups', groupId), { memberIds: arrayRemove(uid) });
   }
 
   await deleteDoc(doc(db, 'groups', groupId, 'members', uid));
