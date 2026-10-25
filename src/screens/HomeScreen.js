@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {View, Text, StyleSheet, FlatList, Pressable, Alert} from 'react-native';
+import {View, Text, StyleSheet, FlatList, Pressable, Alert, Platform} from 'react-native';
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { subscribeToMyGroups, leaveGroup } from '../services/groups';
@@ -46,9 +46,11 @@ export default function HomeScreen({ navigation }) {
           <Text style={styles.buttonText}>⚡ Enregistrer une activité</Text>
         </Pressable>
 
-        <Pressable style={styles.watchButton} onPress={() => navigation.navigate('ImportHealthConnect')}>
-          <Text style={styles.buttonText}>⌚ Importer depuis ma montre</Text>
-        </Pressable>
+          {Platform.OS === 'android' && (
+              <Pressable style={styles.watchButton} onPress={() => navigation.navigate('ImportHealthConnect')}>
+                  <Text style={styles.buttonText}>⌚ Importer depuis ma montre</Text>
+              </Pressable>
+          )}
 
         <FlatList
             data={groups}
