@@ -45,9 +45,6 @@ export default function ChallengeScreen({ navigation, route }) {
     if (periodKey) {
       u4 = subscribeToProgress(groupId, groupementId, challengeId, periodKey, setProgress);
       u5 = subscribeToActivities(groupId, groupementId, challengeId, periodKey, setActivities);
-    } else {
-      setProgress([]);
-      setActivities([]);
     }
     return () => { u1(); u2(); u3(); u4(); u5(); };
   }, [groupId, groupementId, challengeId, periodKey]);
@@ -59,6 +56,9 @@ export default function ChallengeScreen({ navigation, route }) {
         .then((t) => { if (!cancelled) setTarget(t); })
         .catch(() => { if (!cancelled) setTarget(challenge.target); });
     return () => { cancelled = true; };
+    // Dépendances volontairement réduites : on ne relance le calcul que si l'objectif de base,
+    // le mode dynamique, le pas d'ajustement ou la période changent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [challenge?.target, groupement?.dynamicTarget, groupement?.adaptStep, periodKey]);
 
   if (!challenge) {

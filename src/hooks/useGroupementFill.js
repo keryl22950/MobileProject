@@ -21,7 +21,7 @@ export function useGroupementFill(groupId, groupementId, groupement) {
             let target = c.target;
             try {
                 target = await getEffectiveTarget({ groupId, groupementId, groupement, challenge: c, periodKey: period.periodKey });
-            } catch (err) {
+            } catch (_err) {
                 // en cas d'échec on retombe sur l'objectif de base
             }
             if (cancelled) return;

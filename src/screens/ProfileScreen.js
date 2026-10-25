@@ -10,6 +10,12 @@ export default function ProfileScreen({ navigation }) {
     const { displayName, uid } = useAuth();
     const [stats, setStats] = useState([]);
     const [activities, setActivities] = useState([]);
+
+    useEffect(() => {
+        const unsubscribe = subscribeToUserStats(uid, setStats);
+        return unsubscribe;
+    }, [uid]);
+
     useEffect(() => {
         const unsubscribe = subscribeToUserActivities(uid, setActivities);
         return unsubscribe;

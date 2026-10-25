@@ -6,6 +6,7 @@ import { subscribeToGroupements, getCurrentPeriod } from '../services/groupement
 export default function HistoriqueScreen({ navigation, route }) {
     const { groupId } = route.params;
     const [groupements, setGroupements] = useState([]);
+    const [now] = useState(() => Date.now());
 
     useEffect(() => {
         const unsubscribe = subscribeToGroupements(groupId, setGroupements);
@@ -20,7 +21,7 @@ export default function HistoriqueScreen({ navigation, route }) {
                 for (let i = 0; i < period.periodIndex; i++) {
                     entries.push({ key: `${g.id}_P${i}`, label: `Période #${i + 1}`, groupementId: g.id, periodKey: `P${i}` });
                 }
-            } else if (!g.recurring && period && period.periodEnd.getTime() < Date.now()) {
+            } else if (!g.recurring && period && period.periodEnd.getTime() < now) {
                 entries.push({ key: `${g.id}_P0`, label: 'Terminé', groupementId: g.id, periodKey: 'P0' });
             }
             return { title: g.name, data: entries };

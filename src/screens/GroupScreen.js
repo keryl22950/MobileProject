@@ -6,7 +6,6 @@ import { subscribeToGroup, subscribeToMembers, leaveGroup } from '../services/gr
 import { subscribeToGroupements, getCurrentPeriod, deleteGroupement } from '../services/groupements';
 import { useGroupementFill } from '../hooks/useGroupementFill';
 import Screen from '../components/Screen';
-import {expo as group} from "../../app.config";
 
 
 function GroupementCard({ groupId, groupement, isAdmin, onPress, onDelete }) {

@@ -95,7 +95,7 @@ export default function LogActivityScreen({ route, navigation }) {
           </Pressable>
         )}
         {!isTracking && trackedDistance > 0 && (
-          <Pressable style={[styles.button, styles.buttonPrimary]} onPress={handleSaveTracked}>
+          <Pressable style={[styles.button, styles.buttonPrimary]} onPress={handleSaveTracked} disabled={saving}>
             <Text style={styles.buttonText}>Enregistrer {trackedDistance.toFixed(2)} km</Text>
           </Pressable>
         )}
@@ -111,7 +111,7 @@ export default function LogActivityScreen({ route, navigation }) {
           value={manualValue}
           onChangeText={setManualValue}
         />
-        <Pressable style={[styles.button, styles.buttonPrimary]} onPress={handleSaveManual}>
+        <Pressable style={[styles.button, styles.buttonPrimary]} onPress={handleSaveManual} disabled={saving}>
           <Text style={styles.buttonText}>Enregistrer</Text>
         </Pressable>
       </View>
