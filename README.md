@@ -1,122 +1,102 @@
 # ChallengeApp
 
-App mobile (Android + iOS) pour créer des groupes avec ses proches, et se
-challenger ensemble sur des objectifs à deadline (course à pied, pompes,
-lecture, jeux vidéo...), avec suivi GPS, classement en temps réel et chat.
+App mobile (Android + iOS) pour créer des groupes avec ses proches et se challenger
+ensemble sur des objectifs à deadline (course, pompes, lecture, jeux vidéo…), avec
+suivi GPS, import depuis une montre connectée, classement en temps réel et chat.
 
 ## Concepts
 
-    Groupe (persistant : membres, rôles, chat)
-    
-    └─ Groupement (nom + deadline : ponctuelle avec bouton Start, ou récurrente)
-    
-        └─ Challenge (objectif précis, hérite la deadline du groupement)
-    
-            ├─ periods/{P0, P1, P2...}/progress ← classement, repart à zéro chaque période
-            
-            ├─ periods/{...}/activities ← journal des activités
-            
-            └─ cumulative ← total toutes périodes confondues (stats)
+```
+Groupe (membres, rôles, chat)
+ └─ Événement (nom + deadline : ponctuel avec bouton Start, ou récurrent, éventuellement à objectif dynamique)
+     └─ Challenge (objectif précis, hérite de la deadline de l'événement)
+```
 
+Dans le code, un « événement » s'appelle encore `groupement` (collections Firestore,
+noms de fonctions). Seul l'affichage a été renommé.
 
-- **Groupe** : ex "Famille Dupont". Contient des membres avec un rôle
-  (`creator` / `admin` / `participant`) et un chat commun.
-- **Groupement** : une session avec une deadline — ponctuelle ("Vacances
-  août 2026", démarrée manuellement par un admin) ou récurrente ("Hebdo
-  20km", qui redémarre automatiquement à intervalle régulier à partir d'une
-  date de départ choisie par l'admin).
-- **Challenge** : un objectif précis à l'intérieur d'un groupement (ex :
-  50 km de course). Peut être suivi manuellement ou via le GPS.
+## ⚠️ Expo Go ne fonctionne plus
 
-## Stack
+Le projet utilise du code natif (`react-native-health-connect`, `expo-dev-client`).
+Il faut un **dev client**, pas Expo Go.
 
-- **React Native + Expo** (SDK 57) — un seul code pour Android et iOS
-- **Firebase** (Firestore + Auth anonyme) — données temps réel
-- **React Navigation** — navigation entre écrans
-- **expo-location** — suivi GPS
-- **@react-native-community/datetimepicker** — choix de date/heure de démarrage
+## Installer et lancer en développement
 
-## Installer et lancer en local (développement)
+Prérequis : Node.js 18+, un compte Expo, `npm install -g eas-cli`, puis `eas login`.
 
 ```bash
 npm install
-npx expo start -c
+eas build --profile development --platform android   # une seule fois (et à chaque dépendance native ajoutée)
 ```
 
-Scanne le QR code avec l'app **Expo Go** (Android) — aucune compilation
-native nécessaire pour développer.
+Installe l'APK obtenu sur le téléphone (il s'appelle « ChallengeApp (Dev) »), puis :
+
+```bash
+npx expo start --dev-client
+```
 
 ### Configurer Firebase (une seule fois)
 
 1. Crée un projet sur https://console.firebase.google.com
-2. Active **Firestore Database** et **Authentication** (méthode "Anonyme")
-3. Colle ta config dans `src/services/firebase.js`
-4. Colle les règles de sécurité (`firestore.rules`) dans Firestore Database → Règles → Publier
-
-## Mettre en ligne une version testable (EAS Build)
-
-Le but : générer un vrai `.apk` que tes proches installent directement
-(sans passer par le Play Store), avec mises à jour automatiques ensuite.
-
-### Setup (une seule fois)
+2. Active **Firestore Database** et **Authentication** (méthode « Anonyme »)
+3. Renseigne ta config dans `src/services/firebase.js`
+4. Déploie les règles de sécurité (versionnées dans `firestore.rules`) :
 
 ```bash
-npm install -g eas-cli
-eas login
-eas build:configure
+npm install -g firebase-tools
+firebase login
+firebase deploy --only firestore:rules
 ```
 
-### Construire l'APK à partager
+## Importer des séances depuis une montre (Android)
+
+L'app lit les séances dans **Health Connect**, la couche santé d'Android, quelle que soit la marque.
+
+- Installe/active l'application Health Connect (intégrée à Android 14+, sinon Play Store).
+- Dans l'appli de ta montre (Garmin Connect, Samsung Health, Fitbit…), active la synchronisation vers Health Connect.
+- Dans l'app : accueil, « Importer depuis ma montre ». Autorise **Séances d'exercice** et **Distance**.
+
+Une séance ne compte pour un challenge que si elle a eu lieu pendant la période en cours de son événement.
+Elle est toujours ajoutée à ton profil. Sur iPhone, cette fonction n'existe pas encore.
+
+## Distribuer une version de test
 
 ```bash
 eas build --platform android --profile preview
 ```
 
-Récupère le lien de téléchargement donné à la fin (aussi visible sur
-https://expo.dev), partage-le à tes proches. Ils devront autoriser
-« installer des sources inconnues » sur leur Android.
-
-### Pousser une mise à jour (sans nouvel APK)
-
-Pour un changement de JS uniquement (nouvel écran, correctif, style...) :
+Partage le lien de l'APK. Pour un changement de JavaScript uniquement :
 
 ```bash
-eas update --branch preview --message "Description du changement"
+eas update --branch preview --message "description" --environment preview
 ```
 
-L'app le récupère automatiquement au prochain lancement.
+Un nouveau `eas build` est nécessaire si tu ajoutes une dépendance native, changes une permission,
+l'icône ou `app.config.js`. Dans ce cas, **monte aussi `version` dans `app.config.js`** : la `runtimeVersion`
+en dépend, et les anciens APK ne recevront pas du JS qui appelle un module qu'ils n'ont pas.
 
-⚠️ **Un nouveau build complet (`eas build`) est nécessaire** si tu :
-- ajoutes/changes une dépendance native (comme `datetimepicker`)
-- changes une permission, l'icône, le nom de l'app, ou `app.config.js`
-
-### Pour plus tard : publication sur le Play Store
+## Qualité du code
 
 ```bash
-eas build --platform android --profile production
-eas submit --platform android
+npm run lint      # ESLint
+npm run format    # Prettier
 ```
 
-## Structure des données Firestore
+## Données Firestore
 
-groups/{groupId}
-  - name, inviteCode, ownerId, memberIds
-    members/{uid} — name, role, joinedAt
-    groupements/{groupementId}
-      - name, recurring, recurrenceHours, durationHours, status, startedAt
-        challenges/{challengeId}
-          - presetId, label, icon, unit, target
-            periods/{periodKey}/progress/{uid} — name, value
-            periods/{periodKey}/activities/{activityId} — userId, userName, value
-            cumulative/{uid} — name, value (total toutes périodes)
-            messages/{messageId} — userId, userName, text
-
-## Ce qu'il reste à faire
-
-- Carte du parcours GPS (`react-native-maps`)
-- Notifications push (deadline proche, activité d'un membre)
-- Séparer Firebase dev/prod (voir `APP_VARIANT` dans `app.config.js`)
-
-## Diagramme de l'application
-
-[![Architecture diagram of keryl22950/mobileproject](https://gitdiagram.com/keryl22950/mobileproject/diagram.png)](https://gitdiagram.com/keryl22950/mobileproject?utm_source=readme&utm_medium=picture)
+```
+groups/{groupId}                  name, inviteCode, ownerId, memberIds
+  members/{uid}                   name, role (creator | admin | participant), joinedAt
+  groupements/{id}                name, recurring, recurrenceHours, durationHours, status, startedAt,
+                                  dynamicTarget, adaptStep
+    challenges/{id}               presetId, label, icon, unit, target
+      periods/{P0, P1…}           target (événements dynamiques)
+        progress/{uid}            name, value
+        activities/{id}           userId, userName, value, createdAt
+      cumulative/{uid}            name, value (total toutes périodes)
+  messages/{id}                   userId, userName, text, createdAt
+users/{uid}                       displayName, nameLower
+  friends/{friendUid}
+  stats/{key}                     icon, label, unit, total
+  activities/{id}                 historique du profil (dont séances importées : externalId, source)
+```
