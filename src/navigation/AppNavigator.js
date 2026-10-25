@@ -19,14 +19,15 @@ import ProfileScreen from '../screens/ProfileScreen';
 import FriendsScreen from '../screens/FriendsScreen';
 import FriendProfileScreen from '../screens/FriendProfileScreen';
 import ImportHealthConnectScreen from '../screens/ImportHealthConnectScreen';
+import { colors } from '../theme';
 
 const Stack = createNativeStackNavigator();
 
 const screenOptions = {
-    headerStyle: { backgroundColor: '#111827' },
-    headerTintColor: '#fff',
+    headerStyle: { backgroundColor: colors.header },
+    headerTintColor: colors.primaryText,
     headerTitleStyle: { fontWeight: '600' },
-    contentStyle: { backgroundColor: '#0b0f19' },
+    contentStyle: { backgroundColor: colors.background },
 };
 
 export default function AppNavigator() {

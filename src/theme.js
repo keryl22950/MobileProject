@@ -8,6 +8,7 @@ export const colors = {
   border: '#252b42',
   success: '#22c55e',
   danger: '#ef4444',
+  header: '#111827',
 };
 
 export const spacing = {
