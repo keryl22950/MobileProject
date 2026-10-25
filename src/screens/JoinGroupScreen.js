@@ -33,16 +33,10 @@ export default function JoinGroupScreen({ navigation, route }) {
         value={code}
         onChangeText={setCode}
       />
-      <Text style={styles.hint}>
-        Demande le code (ou le lien) à la personne qui a créé le groupe.
-      </Text>
+      <Text style={styles.hint}>Demande le code (ou le lien) à la personne qui a créé le groupe.</Text>
 
       <Pressable style={styles.button} onPress={handleJoin} disabled={joining}>
-        {joining ? (
-          <ActivityIndicator color={colors.primaryText} />
-        ) : (
-          <Text style={styles.buttonText}>Rejoindre</Text>
-        )}
+        {joining ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.buttonText}>Rejoindre</Text>}
       </Pressable>
     </View>
   );

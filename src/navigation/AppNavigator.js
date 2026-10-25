@@ -24,34 +24,42 @@ import { colors } from '../theme';
 const Stack = createNativeStackNavigator();
 
 const screenOptions = {
-    headerStyle: { backgroundColor: colors.header },
-    headerTintColor: colors.primaryText,
-    headerTitleStyle: { fontWeight: '600' },
-    contentStyle: { backgroundColor: colors.background },
+  headerStyle: { backgroundColor: colors.header },
+  headerTintColor: colors.primaryText,
+  headerTitleStyle: { fontWeight: '600' },
+  contentStyle: { backgroundColor: colors.background },
 };
 
 export default function AppNavigator() {
-    return (
-        <Stack.Navigator initialRouteName="Home" screenOptions={screenOptions}>
-            <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Mes groupes' }} />
-            <Stack.Screen name="CreateGroup" component={CreateGroupScreen} options={{ title: 'Créer un groupe' }} />
-            <Stack.Screen name="JoinGroup" component={JoinGroupScreen} options={{ title: 'Rejoindre un groupe' }} />
-            <Stack.Screen name="Group" component={GroupScreen} options={{ title: 'Groupe' }} />
-            <Stack.Screen name="Members" component={MembersScreen} options={{ title: 'Membres' }} />
-            <Stack.Screen name="CreateGroupement" component={CreateGroupementScreen} options={{ title: 'Événement' }} />
-            <Stack.Screen name="Groupement" component={GroupementScreen} options={{ title: 'Événement' }} />
-            <Stack.Screen name="Stats" component={StatsScreen} options={{ title: 'Statistiques' }} />
-            <Stack.Screen name="Historique" component={HistoriqueScreen} options={{ title: 'Historique' }} />
-            <Stack.Screen name="GroupementHistorique" component={GroupementHistoriqueScreen} options={{ title: 'Historique' }} />
-            <Stack.Screen name="CreateChallenge" component={CreateChallengeScreen} options={{ title: 'Nouveau challenge' }} />
-            <Stack.Screen name="Challenge" component={ChallengeScreen} options={{ title: 'Challenge' }} />
-            <Stack.Screen name="LogActivity" component={LogActivityScreen} options={{ title: 'Enregistrer une activité' }} />
-            <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Discussion' }} />
-            <Stack.Screen name="QuickLog" component={QuickLogScreen} options={{ title: 'Enregistrement rapide' }} />
-            <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profil' }} />
-            <Stack.Screen name="Friends" component={FriendsScreen} options={{ title: 'Amis' }} />
-            <Stack.Screen name="FriendProfile" component={FriendProfileScreen} options={{ title: 'Profil' }} />
-            <Stack.Screen name="ImportHealthConnect" component={ImportHealthConnectScreen} options={{ title: 'Depuis ma montre' }} />
-        </Stack.Navigator>
-    );
+  return (
+    <Stack.Navigator initialRouteName="Home" screenOptions={screenOptions}>
+      <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Mes groupes' }} />
+      <Stack.Screen name="CreateGroup" component={CreateGroupScreen} options={{ title: 'Créer un groupe' }} />
+      <Stack.Screen name="JoinGroup" component={JoinGroupScreen} options={{ title: 'Rejoindre un groupe' }} />
+      <Stack.Screen name="Group" component={GroupScreen} options={{ title: 'Groupe' }} />
+      <Stack.Screen name="Members" component={MembersScreen} options={{ title: 'Membres' }} />
+      <Stack.Screen name="CreateGroupement" component={CreateGroupementScreen} options={{ title: 'Événement' }} />
+      <Stack.Screen name="Groupement" component={GroupementScreen} options={{ title: 'Événement' }} />
+      <Stack.Screen name="Stats" component={StatsScreen} options={{ title: 'Statistiques' }} />
+      <Stack.Screen name="Historique" component={HistoriqueScreen} options={{ title: 'Historique' }} />
+      <Stack.Screen
+        name="GroupementHistorique"
+        component={GroupementHistoriqueScreen}
+        options={{ title: 'Historique' }}
+      />
+      <Stack.Screen name="CreateChallenge" component={CreateChallengeScreen} options={{ title: 'Nouveau challenge' }} />
+      <Stack.Screen name="Challenge" component={ChallengeScreen} options={{ title: 'Challenge' }} />
+      <Stack.Screen name="LogActivity" component={LogActivityScreen} options={{ title: 'Enregistrer une activité' }} />
+      <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Discussion' }} />
+      <Stack.Screen name="QuickLog" component={QuickLogScreen} options={{ title: 'Enregistrement rapide' }} />
+      <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profil' }} />
+      <Stack.Screen name="Friends" component={FriendsScreen} options={{ title: 'Amis' }} />
+      <Stack.Screen name="FriendProfile" component={FriendProfileScreen} options={{ title: 'Profil' }} />
+      <Stack.Screen
+        name="ImportHealthConnect"
+        component={ImportHealthConnectScreen}
+        options={{ title: 'Depuis ma montre' }}
+      />
+    </Stack.Navigator>
+  );
 }

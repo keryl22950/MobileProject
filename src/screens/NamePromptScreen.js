@@ -13,15 +13,10 @@ export default function NamePromptScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Text style={styles.emoji}>👋</Text>
       <Text style={styles.title}>Comment tu t'appelles ?</Text>
-      <Text style={styles.subtitle}>
-        C'est ce nom qui sera affiché aux autres membres de tes groupes.
-      </Text>
+      <Text style={styles.subtitle}>C'est ce nom qui sera affiché aux autres membres de tes groupes.</Text>
       <TextInput
         style={styles.input}
         placeholder="Ton prénom"

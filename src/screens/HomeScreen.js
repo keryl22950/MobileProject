@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {View, Text, StyleSheet, FlatList, Pressable, Alert, Platform} from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, Alert, Platform } from 'react-native';
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { subscribeToMyGroups, leaveGroup } from '../services/groups';
@@ -12,92 +12,116 @@ export default function HomeScreen({ navigation }) {
 
   useEffect(() => {
     if (!uid) return;
-    const unsubscribe = subscribeToMyGroups(uid, (data) => { setGroups(data); setLoading(false); });
+    const unsubscribe = subscribeToMyGroups(uid, (data) => {
+      setGroups(data);
+      setLoading(false);
+    });
     return unsubscribe;
   }, [uid]);
 
-    function handleLongPressGroup(item) {
-        Alert.alert(
-            `Quitter "${item.name}" ?`,
-            "Si tu es le créateur du groupe, un autre admin (ou à défaut un participant) reprendra automatiquement ce rôle. Si tu es la dernière personne du groupe, il sera entièrement supprimé.",
-            [
-                { text: 'Annuler', style: 'cancel' },
-                { text: 'Quitter', style: 'destructive', onPress: async () => {
-                        try {
-                            await leaveGroup({ groupId: item.id, uid });
-                        } catch (err) {
-                            Alert.alert('Erreur', err.message);
-                        }
-                    }},
-            ]
-        );
-    }
+  function handleLongPressGroup(item) {
+    Alert.alert(
+      `Quitter "${item.name}" ?`,
+      'Si tu es le créateur du groupe, un autre admin (ou à défaut un participant) reprendra automatiquement ce rôle. Si tu es la dernière personne du groupe, il sera entièrement supprimé.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Quitter',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await leaveGroup({ groupId: item.id, uid });
+            } catch (err) {
+              Alert.alert('Erreur', err.message);
+            }
+          },
+        },
+      ]
+    );
+  }
 
   return (
-      <Screen style={styles.container}>
-        <View style={styles.topRow}>
-          <Text style={styles.title}>Mes groupes</Text>
-          <Pressable onPress={() => navigation.navigate('Profile')}>
-            <Text style={styles.profileIcon}>👤</Text>
-          </Pressable>
-        </View>
-
-        <Pressable style={styles.quickLogButton} onPress={() => navigation.navigate('QuickLog')}>
-          <Text style={styles.buttonText}>⚡ Enregistrer une activité</Text>
+    <Screen style={styles.container}>
+      <View style={styles.topRow}>
+        <Text style={styles.title}>Mes groupes</Text>
+        <Pressable onPress={() => navigation.navigate('Profile')}>
+          <Text style={styles.profileIcon}>👤</Text>
         </Pressable>
+      </View>
 
-          {Platform.OS === 'android' && (
-              <Pressable style={styles.watchButton} onPress={() => navigation.navigate('ImportHealthConnect')}>
-                  <Text style={styles.buttonText}>⌚ Importer depuis ma montre</Text>
-              </Pressable>
-          )}
+      <Pressable style={styles.quickLogButton} onPress={() => navigation.navigate('QuickLog')}>
+        <Text style={styles.buttonText}>⚡ Enregistrer une activité</Text>
+      </Pressable>
 
-        <FlatList
-            data={groups}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={{ gap: spacing.md, marginTop: spacing.md }}
-            ListEmptyComponent={
-              <Text style={styles.empty}>
-                {loading ? 'Chargement...' : "Tu ne fais partie d'aucun groupe pour l'instant.\nCrées-en un ou rejoins celui de tes proches !"}
+      {Platform.OS === 'android' && (
+        <Pressable style={styles.watchButton} onPress={() => navigation.navigate('ImportHealthConnect')}>
+          <Text style={styles.buttonText}>⌚ Importer depuis ma montre</Text>
+        </Pressable>
+      )}
+
+      <FlatList
+        data={groups}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ gap: spacing.md, marginTop: spacing.md }}
+        ListEmptyComponent={
+          <Text style={styles.empty}>
+            {loading
+              ? 'Chargement...'
+              : "Tu ne fais partie d'aucun groupe pour l'instant.\nCrées-en un ou rejoins celui de tes proches !"}
+          </Text>
+        }
+        renderItem={({ item }) => (
+          <Pressable
+            style={styles.card}
+            onPress={() => navigation.navigate('Group', { groupId: item.id })}
+            onLongPress={() => handleLongPressGroup(item)}
+          >
+            <Text style={styles.cardIcon}>👥</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>{item.name}</Text>
+              <Text style={styles.cardSubtitle}>
+                {(item.memberIds || []).length} membres · Code {item.inviteCode}
               </Text>
-            }
-            renderItem={({ item }) => (
-                <Pressable
-                    style={styles.card}
-                    onPress={() => navigation.navigate('Group', { groupId: item.id })}
-                    onLongPress={() => handleLongPressGroup(item)}
-                >
-                  <Text style={styles.cardIcon}>👥</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>{item.name}</Text>
-                    <Text style={styles.cardSubtitle}>{(item.memberIds || []).length} membres · Code {item.inviteCode}</Text>
-                  </View>
-                </Pressable>
-            )}
-        />
+            </View>
+          </Pressable>
+        )}
+      />
 
-        <View style={styles.actions}>
-          <Pressable style={[styles.button, styles.buttonPrimary]} onPress={() => navigation.navigate('CreateGroup')}>
-            <Text style={styles.buttonText}>+ Créer un groupe</Text>
-          </Pressable>
-          <Pressable style={[styles.button, styles.buttonSecondary]} onPress={() => navigation.navigate('JoinGroup')}>
-            <Text style={styles.buttonText}>Rejoindre avec un code</Text>
-          </Pressable>
-        </View>
-      </Screen>
+      <View style={styles.actions}>
+        <Pressable style={[styles.button, styles.buttonPrimary]} onPress={() => navigation.navigate('CreateGroup')}>
+          <Text style={styles.buttonText}>+ Créer un groupe</Text>
+        </Pressable>
+        <Pressable style={[styles.button, styles.buttonSecondary]} onPress={() => navigation.navigate('JoinGroup')}>
+          <Text style={styles.buttonText}>Rejoindre avec un code</Text>
+        </Pressable>
+      </View>
+    </Screen>
   );
 }
-
-
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: spacing.md },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { color: colors.text, fontSize: 20, fontWeight: '700' },
   profileIcon: { fontSize: 26 },
-  quickLogButton: { backgroundColor: colors.success, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: spacing.md },
+  quickLogButton: {
+    backgroundColor: colors.success,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
   empty: { color: colors.muted, textAlign: 'center', marginTop: spacing.xl },
-  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: 14, padding: spacing.md, gap: spacing.md, borderWidth: 1, borderColor: colors.border },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    padding: spacing.md,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   cardIcon: { fontSize: 32 },
   cardTitle: { color: colors.text, fontSize: 16, fontWeight: '600' },
   cardSubtitle: { color: colors.muted, fontSize: 13, marginTop: 2 },
@@ -106,5 +130,13 @@ const styles = StyleSheet.create({
   buttonPrimary: { backgroundColor: colors.primary },
   buttonSecondary: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
   buttonText: { color: colors.primaryText, fontWeight: '600', fontSize: 15 },
-  watchButton: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: spacing.sm },
+  watchButton: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
 });

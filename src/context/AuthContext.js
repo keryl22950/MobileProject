@@ -25,11 +25,7 @@ export function AuthProvider({ children }) {
     if (uid) await upsertUserProfile({ uid, displayName: name });
   }
 
-  return (
-    <AuthContext.Provider value={{ uid, displayName, ready, setDisplayName }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ uid, displayName, ready, setDisplayName }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

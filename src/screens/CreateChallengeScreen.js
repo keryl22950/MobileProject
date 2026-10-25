@@ -21,56 +21,81 @@ export default function CreateChallengeScreen({ navigation, route }) {
 
   async function handleCreate() {
     const numericTarget = Number(target);
-    if (!numericTarget || numericTarget <= 0) { Alert.alert('Objectif invalide', 'Indique un objectif numérique supérieur à 0.'); return; }
-    if (isCustom && !customName.trim()) { Alert.alert('Nom manquant', 'Donne un nom à ton challenge personnalisé.'); return; }
+    if (!numericTarget || numericTarget <= 0) {
+      Alert.alert('Objectif invalide', 'Indique un objectif numérique supérieur à 0.');
+      return;
+    }
+    if (isCustom && !customName.trim()) {
+      Alert.alert('Nom manquant', 'Donne un nom à ton challenge personnalisé.');
+      return;
+    }
 
     setCreating(true);
     try {
       await createChallenge({
-        groupId, groupementId, createdBy: uid, presetId: selectedPreset.id,
+        groupId,
+        groupementId,
+        createdBy: uid,
+        presetId: selectedPreset.id,
         label: isCustom ? customName.trim() : selectedPreset.label,
-        icon: selectedPreset.icon, unit: selectedPreset.unit, target: numericTarget,
+        icon: selectedPreset.icon,
+        unit: selectedPreset.unit,
+        target: numericTarget,
       });
       navigation.goBack();
     } catch (err) {
-      Alert.alert('Erreur', "Impossible de créer le challenge : " + err.message);
+      Alert.alert('Erreur', 'Impossible de créer le challenge : ' + err.message);
     } finally {
       setCreating(false);
     }
   }
 
   return (
-      <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing.md, gap: spacing.lg }}>
-        <View>
-          <Text style={styles.sectionTitle}>Type de challenge</Text>
-          <View style={styles.grid}>
-            {CHALLENGE_PRESETS.map((preset) => (
-                <Pressable key={preset.id} onPress={() => handleSelectPreset(preset)} style={[styles.presetItem, selectedPreset.id === preset.id && styles.presetItemSelected]}>
-                  <Text style={styles.presetIcon}>{preset.icon}</Text>
-                  <Text style={styles.presetLabel}>{preset.label}</Text>
-                </Pressable>
-            ))}
-          </View>
+    <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing.md, gap: spacing.lg }}>
+      <View>
+        <Text style={styles.sectionTitle}>Type de challenge</Text>
+        <View style={styles.grid}>
+          {CHALLENGE_PRESETS.map((preset) => (
+            <Pressable
+              key={preset.id}
+              onPress={() => handleSelectPreset(preset)}
+              style={[styles.presetItem, selectedPreset.id === preset.id && styles.presetItemSelected]}
+            >
+              <Text style={styles.presetIcon}>{preset.icon}</Text>
+              <Text style={styles.presetLabel}>{preset.label}</Text>
+            </Pressable>
+          ))}
         </View>
+      </View>
 
-        {isCustom && (
-            <View>
-              <Text style={styles.sectionTitle}>Nom du challenge</Text>
-              <TextInput style={styles.input} placeholder="Ex : Nombre de pages de BD lues" placeholderTextColor={colors.muted} value={customName} onChangeText={setCustomName} />
-            </View>
+      {isCustom && (
+        <View>
+          <Text style={styles.sectionTitle}>Nom du challenge</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ex : Nombre de pages de BD lues"
+            placeholderTextColor={colors.muted}
+            value={customName}
+            onChangeText={setCustomName}
+          />
+        </View>
+      )}
+
+      <View>
+        <Text style={styles.sectionTitle}>Objectif ({selectedPreset.unit})</Text>
+        <TextInput style={styles.input} keyboardType="numeric" value={target} onChangeText={setTarget} />
+      </View>
+
+      <Text style={styles.hint}>La deadline de ce challenge est celle de l'événement.</Text>
+
+      <Pressable style={styles.createButton} onPress={handleCreate} disabled={creating}>
+        {creating ? (
+          <ActivityIndicator color={colors.primaryText} />
+        ) : (
+          <Text style={styles.createButtonText}>Créer le challenge</Text>
         )}
-
-        <View>
-          <Text style={styles.sectionTitle}>Objectif ({selectedPreset.unit})</Text>
-          <TextInput style={styles.input} keyboardType="numeric" value={target} onChangeText={setTarget} />
-        </View>
-
-        <Text style={styles.hint}>La deadline de ce challenge est celle de l'événement.</Text>
-
-        <Pressable style={styles.createButton} onPress={handleCreate} disabled={creating}>
-          {creating ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.createButtonText}>Créer le challenge</Text>}
-        </Pressable>
-      </ScrollView>
+      </Pressable>
+    </ScrollView>
   );
 }
 
@@ -78,11 +103,26 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   sectionTitle: { color: colors.text, fontSize: 15, fontWeight: '600', marginBottom: spacing.sm },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  presetItem: { width: '30%', alignItems: 'center', backgroundColor: colors.card, borderRadius: 12, paddingVertical: spacing.md, borderWidth: 1, borderColor: colors.border },
+  presetItem: {
+    width: '30%',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   presetItemSelected: { borderColor: colors.primary, backgroundColor: '#1c1f3a' },
   presetIcon: { fontSize: 26, marginBottom: 4 },
   presetLabel: { color: colors.text, fontSize: 12, textAlign: 'center' },
-  input: { backgroundColor: colors.card, borderRadius: 10, padding: spacing.md, color: colors.text, borderWidth: 1, borderColor: colors.border },
+  input: {
+    backgroundColor: colors.card,
+    borderRadius: 10,
+    padding: spacing.md,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   hint: { color: colors.muted, fontSize: 12 },
   createButton: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
   createButtonText: { color: colors.primaryText, fontWeight: '700', fontSize: 15 },

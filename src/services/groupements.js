@@ -1,94 +1,118 @@
-import { collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, orderBy, query, serverTimestamp } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+} from 'firebase/firestore';
 import { db } from './firebase';
 
-export async function createGroupement({ groupId, createdBy, name, recurring, recurrenceHours, durationHours, startedAt, dynamicTarget, adaptStep }) {
-    const base = {
-        name,
-        recurring,
-        recurrenceHours: recurring ? recurrenceHours : null,
-        durationHours: recurring ? null : durationHours,
-        dynamicTarget: !!(recurring && dynamicTarget),
-        adaptStep: adaptStep ?? 10,
-        createdBy,
-        createdAt: serverTimestamp(),
-    };
+export async function createGroupement({
+  groupId,
+  createdBy,
+  name,
+  recurring,
+  recurrenceHours,
+  durationHours,
+  startedAt,
+  dynamicTarget,
+  adaptStep,
+}) {
+  const base = {
+    name,
+    recurring,
+    recurrenceHours: recurring ? recurrenceHours : null,
+    durationHours: recurring ? null : durationHours,
+    dynamicTarget: !!(recurring && dynamicTarget),
+    adaptStep: adaptStep ?? 10,
+    createdBy,
+    createdAt: serverTimestamp(),
+  };
 
-    if (recurring) {
-        base.status = 'active';
-        base.startedAt = startedAt;
-    } else {
-        base.status = 'pending';
-        base.startedAt = null;
-    }
+  if (recurring) {
+    base.status = 'active';
+    base.startedAt = startedAt;
+  } else {
+    base.status = 'pending';
+    base.startedAt = null;
+  }
 
-    const ref = await addDoc(collection(db, 'groups', groupId, 'groupements'), base);
-    return ref.id;
+  const ref = await addDoc(collection(db, 'groups', groupId, 'groupements'), base);
+  return ref.id;
 }
 
 export async function startGroupement({ groupId, groupementId }) {
-    await updateDoc(doc(db, 'groups', groupId, 'groupements', groupementId), {
-        status: 'active',
-        startedAt: serverTimestamp(),
-    });
+  await updateDoc(doc(db, 'groups', groupId, 'groupements', groupementId), {
+    status: 'active',
+    startedAt: serverTimestamp(),
+  });
 }
 
 export async function updateGroupement({ groupId, groupementId, changes }) {
-    await updateDoc(doc(db, 'groups', groupId, 'groupements', groupementId), changes);
+  await updateDoc(doc(db, 'groups', groupId, 'groupements', groupementId), changes);
 }
 
 export async function deleteGroupement({ groupId, groupementId }) {
-    await deleteDoc(doc(db, 'groups', groupId, 'groupements', groupementId));
+  await deleteDoc(doc(db, 'groups', groupId, 'groupements', groupementId));
 }
 
 export function subscribeToGroupements(groupId, callback) {
-    const q = query(collection(db, 'groups', groupId, 'groupements'), orderBy('createdAt', 'desc'));
-    return onSnapshot(
-        q,
-        (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-        (error) => { if (error.code !== 'permission-denied') console.error(error); }
-    );
+  const q = query(collection(db, 'groups', groupId, 'groupements'), orderBy('createdAt', 'desc'));
+  return onSnapshot(
+    q,
+    (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (error) => {
+      if (error.code !== 'permission-denied') console.error(error);
+    }
+  );
 }
 
 export function subscribeToGroupement(groupId, groupementId, callback) {
-    return onSnapshot(
-        doc(db, 'groups', groupId, 'groupements', groupementId),
-        (snap) => { if (snap.exists()) callback({ id: snap.id, ...snap.data() }); },
-        (error) => { if (error.code !== 'permission-denied') console.error(error); }
-    );
+  return onSnapshot(
+    doc(db, 'groups', groupId, 'groupements', groupementId),
+    (snap) => {
+      if (snap.exists()) callback({ id: snap.id, ...snap.data() });
+    },
+    (error) => {
+      if (error.code !== 'permission-denied') console.error(error);
+    }
+  );
 }
 
 // Calcule la période actuelle. Cas particuliers :
 // - non récurrent pas encore démarré → null
 // - récurrent dont la date de départ est dans le futur → { notStarted: true, periodEnd: <date de départ> }
 export function getCurrentPeriod(groupement, at = new Date()) {
-    if (!groupement || !groupement.startedAt) return null;
-    const startedAt = groupement.startedAt.toDate
-        ? groupement.startedAt.toDate()
-        : new Date(groupement.startedAt);
-    const periodLengthHours = groupement.recurring ? groupement.recurrenceHours : groupement.durationHours;
-    const periodLengthMs = periodLengthHours * 60 * 60 * 1000;
-    const atMs = at.getTime();
+  if (!groupement || !groupement.startedAt) return null;
+  const startedAt = groupement.startedAt.toDate ? groupement.startedAt.toDate() : new Date(groupement.startedAt);
+  const periodLengthHours = groupement.recurring ? groupement.recurrenceHours : groupement.durationHours;
+  const periodLengthMs = periodLengthHours * 60 * 60 * 1000;
+  const atMs = at.getTime();
 
-    if (atMs < startedAt.getTime()) {
-        return { periodKey: null, periodIndex: -1, periodStart: null, periodEnd: startedAt, notStarted: true };
-    }
+  if (atMs < startedAt.getTime()) {
+    return { periodKey: null, periodIndex: -1, periodStart: null, periodEnd: startedAt, notStarted: true };
+  }
 
-    if (!groupement.recurring) {
-        return {
-            periodKey: 'P0',
-            periodIndex: 0,
-            periodStart: startedAt,
-            periodEnd: new Date(startedAt.getTime() + periodLengthMs),
-        };
-    }
-
-    const elapsed = atMs - startedAt.getTime();
-    const periodIndex = Math.floor(elapsed / periodLengthMs);
-    const periodStart = new Date(startedAt.getTime() + periodIndex * periodLengthMs);
+  if (!groupement.recurring) {
     return {
-        periodKey: `P${periodIndex}`,
-        periodIndex,
-        periodStart,
-        periodEnd: new Date(periodStart.getTime() + periodLengthMs),
+      periodKey: 'P0',
+      periodIndex: 0,
+      periodStart: startedAt,
+      periodEnd: new Date(startedAt.getTime() + periodLengthMs),
     };
+  }
+
+  const elapsed = atMs - startedAt.getTime();
+  const periodIndex = Math.floor(elapsed / periodLengthMs);
+  const periodStart = new Date(startedAt.getTime() + periodIndex * periodLengthMs);
+  return {
+    periodKey: `P${periodIndex}`,
+    periodIndex,
+    periodStart,
+    periodEnd: new Date(periodStart.getTime() + periodLengthMs),
+  };
 }

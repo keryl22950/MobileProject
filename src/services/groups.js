@@ -1,4 +1,6 @@
-import { arrayUnion, arrayRemove,
+import {
+  arrayUnion,
+  arrayRemove,
   collection,
   doc,
   addDoc,
@@ -10,7 +12,8 @@ import { arrayUnion, arrayRemove,
   orderBy,
   serverTimestamp,
   updateDoc,
-  limit, deleteDoc,
+  limit,
+  deleteDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -72,30 +75,38 @@ export async function joinGroupByCode({ uid, userName, code }) {
 
 // Liste des groupes où l'utilisateur courant est membre (pour l'écran d'accueil).
 export function subscribeToMyGroups(uid, callback) {
-    const q = query(collection(db, 'groups'), where('memberIds', 'array-contains', uid));
-    return onSnapshot(
-        q,
-        (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-        (error) => { if (error.code !== 'permission-denied') console.error(error); }
-    );
+  const q = query(collection(db, 'groups'), where('memberIds', 'array-contains', uid));
+  return onSnapshot(
+    q,
+    (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (error) => {
+      if (error.code !== 'permission-denied') console.error(error);
+    }
+  );
 }
 
 export function subscribeToGroup(groupId, callback) {
-    return onSnapshot(
-        doc(db, 'groups', groupId),
-        (snap) => { if (snap.exists()) callback({ id: snap.id, ...snap.data() }); },
-        (error) => { if (error.code !== 'permission-denied') console.error(error); }
-    );
+  return onSnapshot(
+    doc(db, 'groups', groupId),
+    (snap) => {
+      if (snap.exists()) callback({ id: snap.id, ...snap.data() });
+    },
+    (error) => {
+      if (error.code !== 'permission-denied') console.error(error);
+    }
+  );
 }
 
 // Membres du groupe, avec leur rôle. Triés par date d'arrivée.
 export function subscribeToMembers(groupId, callback) {
-    const q = query(collection(db, 'groups', groupId, 'members'), orderBy('joinedAt', 'asc'));
-    return onSnapshot(
-        q,
-        (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-        (error) => { if (error.code !== 'permission-denied') console.error(error); }
-    );
+  const q = query(collection(db, 'groups', groupId, 'members'), orderBy('joinedAt', 'asc'));
+  return onSnapshot(
+    q,
+    (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (error) => {
+      if (error.code !== 'permission-denied') console.error(error);
+    }
+  );
 }
 
 // Seul un admin/créateur peut changer le rôle d'un membre (les règles
@@ -125,11 +136,7 @@ export async function sendMessage({ groupId, uid, userName, text }) {
 }
 
 export function subscribeToMessages(groupId, callback) {
-  const q = query(
-    collection(db, 'groups', groupId, 'messages'),
-    orderBy('createdAt', 'asc'),
-    limit(200)
-  );
+  const q = query(collection(db, 'groups', groupId, 'messages'), orderBy('createdAt', 'asc'), limit(200));
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
   });

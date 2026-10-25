@@ -1,22 +1,17 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import {
-  initializeAuth,
-  getReactNativePersistence,
-  signInAnonymously,
-  onAuthStateChanged,
-} from 'firebase/auth';
+import { initializeAuth, getReactNativePersistence, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyB4smO8Ks72CYPxj6sx_TaiUseGJlc09Yg",
-  authDomain: "mobileproject-c534a.firebaseapp.com",
-  databaseURL: "https://mobileproject-c534a-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "mobileproject-c534a",
-  storageBucket: "mobileproject-c534a.firebasestorage.app",
-  messagingSenderId: "631428127584",
-  appId: "1:631428127584:web:12890482eb518848d35c05",
-  measurementId: "G-D0DEM680VE"
+  apiKey: 'AIzaSyB4smO8Ks72CYPxj6sx_TaiUseGJlc09Yg',
+  authDomain: 'mobileproject-c534a.firebaseapp.com',
+  databaseURL: 'https://mobileproject-c534a-default-rtdb.europe-west1.firebasedatabase.app',
+  projectId: 'mobileproject-c534a',
+  storageBucket: 'mobileproject-c534a.firebasestorage.app',
+  messagingSenderId: '631428127584',
+  appId: '1:631428127584:web:12890482eb518848d35c05',
+  measurementId: 'G-D0DEM680VE',
 };
 
 const app = initializeApp(firebaseConfig);
@@ -37,9 +32,7 @@ export function ensureSignedIn(callback) {
     if (user) {
       callback(user);
     } else {
-      signInAnonymously(auth).catch((err) =>
-        console.error('Erreur de connexion anonyme :', err)
-      );
+      signInAnonymously(auth).catch((err) => console.error('Erreur de connexion anonyme :', err));
     }
   });
 }

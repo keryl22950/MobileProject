@@ -47,11 +47,7 @@ export default function MembersScreen({ route }) {
         renderItem={({ item }) => {
           const canManage = isAdmin && item.id !== uid && item.role !== 'creator';
           return (
-            <Pressable
-              style={styles.row}
-              disabled={!canManage}
-              onPress={() => handleChangeRole(item)}
-            >
+            <Pressable style={styles.row} disabled={!canManage} onPress={() => handleChangeRole(item)}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.name}>
                   {item.name}
@@ -67,9 +63,7 @@ export default function MembersScreen({ route }) {
         }}
       />
       {isAdmin && (
-        <Text style={styles.hint}>
-          Appuie sur un membre pour le promouvoir admin ou le rétrograder participant.
-        </Text>
+        <Text style={styles.hint}>Appuie sur un membre pour le promouvoir admin ou le rétrograder participant.</Text>
       )}
     </View>
   );

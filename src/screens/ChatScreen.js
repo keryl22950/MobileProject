@@ -29,10 +29,7 @@ export default function ChatScreen({ route }) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <FlatList
         data={messages}
         keyExtractor={(item) => item.id}

@@ -31,19 +31,19 @@ export default function LogActivityScreen({ route, navigation }) {
     lastPoint.current = null;
 
     watchSubscription.current = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 5, timeInterval: 2000 },
-        (loc) => {
-          // Ignore les points peu fiables (précision annoncée par le GPS, en mètres) —
-          // mieux vaut manquer un point que d'ajouter une distance bidon.
-          if (loc.coords.accuracy != null && loc.coords.accuracy > 20) return;
+      { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 5, timeInterval: 2000 },
+      (loc) => {
+        // Ignore les points peu fiables (précision annoncée par le GPS, en mètres) —
+        // mieux vaut manquer un point que d'ajouter une distance bidon.
+        if (loc.coords.accuracy != null && loc.coords.accuracy > 20) return;
 
-          const point = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
-          if (lastPoint.current) {
-            const d = distanceKm(lastPoint.current, point);
-            setTrackedDistance((prev) => prev + d);
-          }
-          lastPoint.current = point;
+        const point = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+        if (lastPoint.current) {
+          const d = distanceKm(lastPoint.current, point);
+          setTrackedDistance((prev) => prev + d);
         }
+        lastPoint.current = point;
+      }
     );
   }
 

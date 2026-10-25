@@ -1,4 +1,17 @@
-import { collection, doc, addDoc, setDoc, getDoc, deleteDoc, onSnapshot, orderBy, query, serverTimestamp, increment, limit } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  addDoc,
+  setDoc,
+  getDoc,
+  deleteDoc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  increment,
+  limit,
+} from 'firebase/firestore';
 import { db } from './firebase';
 import { recordUserActivity } from './users';
 
@@ -17,7 +30,13 @@ function challengeSubDoc(groupId, groupementId, challengeId, ...segments) {
 
 export async function createChallenge({ groupId, groupementId, createdBy, presetId, label, icon, unit, target }) {
   const ref = await addDoc(challengesCol(groupId, groupementId), {
-    presetId, label, icon, unit, target, createdBy, createdAt: serverTimestamp(),
+    presetId,
+    label,
+    icon,
+    unit,
+    target,
+    createdBy,
+    createdAt: serverTimestamp(),
   });
   return ref.id;
 }
@@ -47,8 +66,8 @@ export function subscribeToChallenge(groupId, groupementId, challengeId, callbac
 
 export function subscribeToProgress(groupId, groupementId, challengeId, periodKey, callback) {
   const q = query(
-      challengeSubCollection(groupId, groupementId, challengeId, 'periods', periodKey, 'progress'),
-      orderBy('value', 'desc')
+    challengeSubCollection(groupId, groupementId, challengeId, 'periods', periodKey, 'progress'),
+    orderBy('value', 'desc')
   );
   return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
 }
@@ -62,9 +81,9 @@ export function subscribeToCumulative(groupId, groupementId, challengeId, callba
 // (avec leur date) — affiché dans ChallengeScreen.
 export function subscribeToActivities(groupId, groupementId, challengeId, periodKey, callback) {
   const q = query(
-      challengeSubCollection(groupId, groupementId, challengeId, 'periods', periodKey, 'activities'),
-      orderBy('createdAt', 'desc'),
-      limit(50)
+    challengeSubCollection(groupId, groupementId, challengeId, 'periods', periodKey, 'activities'),
+    orderBy('createdAt', 'desc'),
+    limit(50)
   );
   return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
 }
@@ -75,17 +94,20 @@ export function subscribeToActivities(groupId, groupementId, challengeId, period
 // de dupliquer l'entrée dans l'historique du profil.
 async function writeGroupSideProgress({ groupId, groupementId, challengeId, periodKey, uid, userName, value, date }) {
   await addDoc(challengeSubCollection(groupId, groupementId, challengeId, 'periods', periodKey, 'activities'), {
-    userId: uid, userName, value, createdAt: date ?? serverTimestamp(),
+    userId: uid,
+    userName,
+    value,
+    createdAt: date ?? serverTimestamp(),
   });
   await setDoc(
-      challengeSubDoc(groupId, groupementId, challengeId, 'periods', periodKey, 'progress', uid),
-      { name: userName, value: increment(value), updatedAt: serverTimestamp() },
-      { merge: true }
+    challengeSubDoc(groupId, groupementId, challengeId, 'periods', periodKey, 'progress', uid),
+    { name: userName, value: increment(value), updatedAt: serverTimestamp() },
+    { merge: true }
   );
   await setDoc(
-      challengeSubDoc(groupId, groupementId, challengeId, 'cumulative', uid),
-      { name: userName, value: increment(value), updatedAt: serverTimestamp() },
-      { merge: true }
+    challengeSubDoc(groupId, groupementId, challengeId, 'cumulative', uid),
+    { name: userName, value: increment(value), updatedAt: serverTimestamp() },
+    { merge: true }
   );
 }
 
@@ -101,7 +123,14 @@ export async function logActivity({ groupId, groupementId, challengeId, periodKe
   await writeGroupSideProgress({ groupId, groupementId, challengeId, periodKey, uid, userName, value });
 
   await recordUserActivity({
-    uid, presetId: challenge.presetId, label: challenge.label, icon: challenge.icon, unit: challenge.unit, value,
-    groupId, groupementId, challengeId,
+    uid,
+    presetId: challenge.presetId,
+    label: challenge.label,
+    icon: challenge.icon,
+    unit: challenge.unit,
+    value,
+    groupId,
+    groupementId,
+    challengeId,
   });
 }

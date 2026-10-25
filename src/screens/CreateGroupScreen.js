@@ -37,8 +37,8 @@ export default function CreateGroupScreen({ navigation }) {
         autoFocus
       />
       <Text style={styles.hint}>
-        Tu pourras inviter tes proches avec un code, et créer plusieurs challenges
-        dans ce groupe au fil du temps. Tu en seras le créateur (rôle admin).
+        Tu pourras inviter tes proches avec un code, et créer plusieurs challenges dans ce groupe au fil du temps. Tu en
+        seras le créateur (rôle admin).
       </Text>
 
       <Pressable style={styles.button} onPress={handleCreate} disabled={creating}>
