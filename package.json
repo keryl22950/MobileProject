@@ -35,5 +35,8 @@
     "eslint-config-expo": "~57.0.2",
     "prettier": "^3.9.10"
   },
+  "overrides": {
+    "@react-native-async-storage/async-storage": "$@react-native-async-storage/async-storage"
+  },
   "private": true
 }
