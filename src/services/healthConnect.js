@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import {
     initialize,
     requestPermission,
@@ -51,6 +52,10 @@ function toMeters(length) {
 }
 
 export async function ensureHealthConnectReady() {
+    if (Platform.OS !== 'android') {
+        throw new Error("L'import depuis une montre est disponible uniquement sur Android pour l'instant.");
+    }
+
     const status = await getSdkStatus();
     if (status !== SdkAvailabilityStatus.SDK_AVAILABLE) {
         throw new Error("Health Connect n'est pas disponible. Installe ou mets à jour l'application « Health Connect » depuis le Play Store.");
@@ -65,6 +70,9 @@ export async function ensureHealthConnectReady() {
     if (!granted.some((p) => p.recordType === 'ExerciseSession')) {
         throw new Error("Permission refusée : l'accès aux séances d'exercice est nécessaire.");
     }
+
+    // Sans la permission Distance, les séances s'affichent mais sans distance : on le signale.
+    return { hasDistance: granted.some((p) => p.recordType === 'Distance') };
 }
 
 // Séances des `days` derniers jours, tous appareils confondus, dédoublonnées.

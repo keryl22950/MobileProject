@@ -16,11 +16,13 @@ export default function ImportHealthConnectScreen() {
     const [sessions, setSessions] = useState([]);
     const [importingId, setImportingId] = useState(null);
     const [manual, setManual] = useState({});
+    const [hasDistance, setHasDistance] = useState(true);
 
     useEffect(() => {
         (async () => {
             try {
-                await ensureHealthConnectReady();
+                const ready = await ensureHealthConnectReady();
+                setHasDistance(ready.hasDistance);
                 const [recent, imported] = await Promise.all([readRecentSessions(), getImportedExternalIds(uid)]);
                 setSessions(recent.filter((s) => !imported.has(`hc_${s.id}`)));
             } catch (err) {
@@ -112,6 +114,12 @@ export default function ImportHealthConnectScreen() {
             <Text style={styles.hint}>
                 Elles viennent de Health Connect : active la synchronisation dans l'appli de ta montre (Garmin Connect, Samsung Health…) si ta séance n'apparaît pas.
             </Text>
+            {!hasDistance && (
+                <Text style={styles.warning}>
+                    La permission « Distance » n'est pas accordée : les distances ne sont pas lues, tu devras les saisir à la main.
+                    Tu peux l'autoriser dans l'appli Android « Health Connect » (autorisations des applis, ChallengeApp).
+                </Text>
+            )}
             <FlatList
                 data={sessions}
                 keyExtractor={(item) => item.id}
@@ -170,4 +178,5 @@ const styles = StyleSheet.create({
     sub: { color: colors.muted, fontSize: 12, marginTop: 2 },
     action: { color: colors.primary, fontWeight: '700' },
     input: { backgroundColor: colors.background, borderRadius: 8, padding: spacing.sm, color: colors.text, borderWidth: 1, borderColor: colors.border, marginTop: spacing.sm },
+    warning: { color: colors.danger, fontSize: 12, marginBottom: spacing.md, lineHeight: 17 },
 });
