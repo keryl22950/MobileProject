@@ -4,7 +4,7 @@ import {
   collection,
   doc,
   addDoc,
-  setDoc,
+  getDoc,
   getDocs,
   query,
   where,
@@ -13,7 +13,7 @@ import {
   serverTimestamp,
   updateDoc,
   limit,
-  deleteDoc,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -31,7 +31,9 @@ function generateInviteCode() {
 export async function createGroup({ uid, userName, name }) {
   const inviteCode = generateInviteCode();
 
-  const groupRef = await addDoc(collection(db, 'groups'), {
+  const groupRef = doc(collection(db, 'groups'));
+  const batch = writeBatch(db);
+  batch.set(groupRef, {
     name,
     inviteCode,
     ownerId: uid,
@@ -40,11 +42,12 @@ export async function createGroup({ uid, userName, name }) {
   });
 
   // Le créateur du groupe devient automatiquement "creator" (rôle le plus élevé).
-  await setDoc(doc(db, 'groups', groupRef.id, 'members', uid), {
+  batch.set(doc(groupRef, 'members', uid), {
     name: userName,
     role: 'creator',
     joinedAt: serverTimestamp(),
   });
+  await batch.commit();
 
   return groupRef.id;
 }
@@ -58,17 +61,18 @@ export async function joinGroupByCode({ uid, userName, code }) {
   }
 
   const groupDoc = snap.docs[0];
-  // Déjà membre : rien à écrire (et surtout pas de rôle à écraser).
-  if ((groupDoc.data().memberIds || []).includes(uid)) return groupDoc.id;
+  const memberRef = doc(groupDoc.ref, 'members', uid);
+  const alreadyJoined = groupDoc.data().memberIds.includes(uid);
+  if (alreadyJoined && (await getDoc(memberRef)).exists()) return groupDoc.id;
 
-  // arrayUnion : atomique, même si deux personnes rejoignent en même temps.
-  await updateDoc(doc(db, 'groups', groupDoc.id), { memberIds: arrayUnion(uid) });
-
-  await setDoc(doc(db, 'groups', groupDoc.id, 'members', uid), {
+  const batch = writeBatch(db);
+  if (!alreadyJoined) batch.update(groupDoc.ref, { memberIds: arrayUnion(uid) });
+  batch.set(memberRef, {
     name: userName,
-    role: 'participant',
+    role: groupDoc.data().ownerId === uid ? 'creator' : 'participant',
     joinedAt: serverTimestamp(),
   });
+  await batch.commit();
 
   return groupDoc.id;
 }
@@ -142,8 +146,6 @@ export function subscribeToMessages(groupId, callback) {
   });
 }
 
-// ajoute getDoc à l'import existant de 'firebase/firestore'
-
 export async function updateGroup({ groupId, changes }) {
   await updateDoc(doc(db, 'groups', groupId), changes);
 }
@@ -153,27 +155,25 @@ export async function updateGroup({ groupId, changes }) {
 // rôle est transmis en priorité à un admin existant, sinon au premier
 // participant restant.
 export async function leaveGroup({ groupId, uid }) {
-  const membersSnap = await getDocs(collection(db, 'groups', groupId, 'members'));
-  const members = membersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  const me = members.find((m) => m.id === uid);
-  const remaining = members.filter((m) => m.id !== uid);
+  const groupRef = doc(db, 'groups', groupId);
+  const { ownerId, memberIds } = (await getDoc(groupRef)).data();
+  const batch = writeBatch(db);
+  batch.delete(doc(groupRef, 'members', uid));
+  const groupDeleted = ownerId === uid && memberIds.length === 1;
 
-  if (remaining.length === 0) {
-    await deleteDoc(doc(db, 'groups', groupId, 'members', uid));
-    await deleteDoc(doc(db, 'groups', groupId));
-    return { groupDeleted: true };
-  }
-
-  // L'ordre compte : promotion et mise à jour du groupe AVANT de supprimer mon propre
-  // document membre, sinon les règles ne me reconnaissent plus comme admin.
-  if (me?.role === 'creator') {
-    const nextCreator = remaining.find((m) => m.role === 'admin') || remaining[0];
-    await setDoc(doc(db, 'groups', groupId, 'members', nextCreator.id), { role: 'creator' }, { merge: true });
-    await updateDoc(doc(db, 'groups', groupId), { memberIds: arrayRemove(uid), ownerId: nextCreator.id });
+  if (groupDeleted) {
+    batch.delete(groupRef);
+  } else if (ownerId === uid) {
+    const membersSnap = await getDocs(query(collection(groupRef, 'members'), orderBy('joinedAt', 'asc')));
+    const remaining = membersSnap.docs.filter((member) => member.id !== uid && memberIds.includes(member.id));
+    const nextCreator = remaining.find((member) => member.data().role === 'admin') || remaining[0];
+    if (!nextCreator) throw new Error('Aucun membre disponible pour reprendre le groupe.');
+    batch.update(nextCreator.ref, { role: 'creator' });
+    batch.update(groupRef, { memberIds: arrayRemove(uid), ownerId: nextCreator.id });
   } else {
-    await updateDoc(doc(db, 'groups', groupId), { memberIds: arrayRemove(uid) });
+    batch.update(groupRef, { memberIds: arrayRemove(uid) });
   }
 
-  await deleteDoc(doc(db, 'groups', groupId, 'members', uid));
-  return { groupDeleted: false };
+  await batch.commit();
+  return { groupDeleted };
 }

@@ -82,6 +82,13 @@ npm run lint      # ESLint
 npm run format    # Prettier
 ```
 
+Pour vérifier les règles Firestore sur des données de test, lance les émulateurs Auth et Firestore
+avec une version de Firebase CLI compatible avec ton JDK :
+
+```bash
+firebase emulators:exec --only firestore,auth --project demo-challengeapp "node scripts/test-firestore-rules.mjs"
+```
+
 ## Données Firestore
 
 ```
