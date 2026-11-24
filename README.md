@@ -89,10 +89,22 @@ Pour vérifier les règles Firestore sur des données de test, lance les émulat
 avec une version de Firebase CLI compatible avec ton JDK :
 
 ```bash
-firebase emulators:exec --only firestore,auth --project demo-challengeapp "node scripts/test-firestore-rules.mjs"
+firebase emulators:exec --only firestore,auth --project demo-challengeapp "npm run test:emulators"
 ```
 
 ## Données Firestore
+
+Les saisies directes, QuickLog et imports utilisent une transaction commune dans
+`src/services/activities.js` : historique, statistiques, journal, progression et cumul
+sont enregistrés ensemble. Une nouvelle tentative avec le même identifiant ne recompte
+pas l'activité. Les imports conservent leur identifiant `hc_<id>` ; les saisies manuelles
+conservent le leur tant que l'écran reste ouvert. Une connexion est nécessaire.
+
+Les périodes et les types des challenges sont revérifiés à la confirmation. Une sélection
+périmée ou supérieure à 100 challenges / 8 groupes est refusée sans écriture partielle.
+La reprise persistante après fermeture d'une saisie et le traitement au-delà de ces limites
+restent à réaliser. Les anciens imports partiellement enregistrés ne sont pas réparés
+automatiquement : leurs contributions d'origine ne sont pas connues avec certitude.
 
 ```
 groups/{groupId}                  name, inviteCode, ownerId, memberIds

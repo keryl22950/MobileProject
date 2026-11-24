@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TextInput, Pressable, Alert } from 'react-nativ
 import * as Location from 'expo-location';
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
-import { logActivity } from '../services/challenges';
+import { createActivityId, saveActivity } from '../services/activities';
 import { distanceKm } from '../utils/geo';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 
@@ -16,6 +16,8 @@ export default function LogActivityScreen({ route, navigation }) {
   const [saving, setSaving] = useState(false);
   const watchSubscription = useRef(null);
   const lastPoint = useRef(null);
+  const submission = useRef(null);
+  const saveLock = useRef(false);
 
   async function startTracking() {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -57,17 +59,27 @@ export default function LogActivityScreen({ route, navigation }) {
   }
 
   async function saveValue(value) {
-    if (!value || value <= 0) {
+    if (saveLock.current) return;
+    if (!Number.isFinite(value) || value <= 0) {
       Alert.alert('Valeur invalide', 'Indique une valeur supérieure à 0.');
       return;
     }
+    saveLock.current = true;
     setSaving(true);
     try {
-      await logActivity({ groupId, groupementId, challengeId, periodKey, uid, userName: displayName, value });
+      if (!submission.current) submission.current = createActivityId(uid);
+      await saveActivity({
+        uid,
+        userName: displayName,
+        activityId: submission.current,
+        value,
+        targets: [{ groupId, groupementId, challengeId, periodKey }],
+      });
       navigation.goBack();
     } catch (err) {
       Alert.alert('Erreur', "Impossible d'enregistrer l'activité : " + err.message);
     } finally {
+      saveLock.current = false;
       setSaving(false);
     }
   }

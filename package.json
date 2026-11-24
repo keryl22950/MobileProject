@@ -8,7 +8,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "node --experimental-vm-modules --test scripts/test-services.mjs",
+    "test": "node --experimental-vm-modules --test scripts/test-services.mjs scripts/test-activities.mjs",
+    "test:emulators": "node --experimental-vm-modules --test scripts/test-activities.mjs scripts/test-firestore-rules.mjs",
     "format": "prettier --write App.js src"
   },
   "dependencies": {

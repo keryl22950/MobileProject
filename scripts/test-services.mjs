@@ -1,22 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
-import { SourceTextModule, SyntheticModule } from 'node:vm';
-
-// Exécute les vrais services avec des frontières natives/Firestore simulées.
-async function loadService(file, dependencies) {
-  const source = await readFile(new URL(`../src/services/${file}`, import.meta.url), 'utf8');
-  const module = new SourceTextModule(source);
-  await module.link((name) => {
-    const values = dependencies[name];
-    assert.ok(values, `Dépendance non simulée : ${name}`);
-    return new SyntheticModule(Object.keys(values), function () {
-      for (const [key, value] of Object.entries(values)) this.setExport(key, value);
-    });
-  });
-  await module.evaluate();
-  return module.namespace;
-}
+import { loadService } from './load-service.mjs';
 
 async function healthService(hasDistance) {
   const calls = [];

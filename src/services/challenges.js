@@ -3,17 +3,14 @@ import {
   doc,
   addDoc,
   setDoc,
-  getDoc,
   deleteDoc,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
-  increment,
   limit,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { recordUserActivity } from './users';
 
 function challengesCol(groupId, groupementId) {
   return collection(db, 'groups', groupId, 'groupements', groupementId, 'challenges');
@@ -23,9 +20,6 @@ function challengeDoc(groupId, groupementId, challengeId) {
 }
 function challengeSubCollection(groupId, groupementId, challengeId, ...segments) {
   return collection(db, 'groups', groupId, 'groupements', groupementId, 'challenges', challengeId, ...segments);
-}
-function challengeSubDoc(groupId, groupementId, challengeId, ...segments) {
-  return doc(db, 'groups', groupId, 'groupements', groupementId, 'challenges', challengeId, ...segments);
 }
 
 export async function createChallenge({ groupId, groupementId, createdBy, presetId, label, icon, unit, target }) {
@@ -86,51 +80,4 @@ export function subscribeToActivities(groupId, groupementId, challengeId, period
     limit(50)
   );
   return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
-}
-
-// Écritures côté groupe uniquement (fil d'activités du challenge + classement
-// + cumul) — sans toucher au profil. Utilisé par l'enregistrement rapide quand
-// une même activité s'applique à plusieurs challenges à la fois, pour éviter
-// de dupliquer l'entrée dans l'historique du profil.
-async function writeGroupSideProgress({ groupId, groupementId, challengeId, periodKey, uid, userName, value, date }) {
-  await addDoc(challengeSubCollection(groupId, groupementId, challengeId, 'periods', periodKey, 'activities'), {
-    userId: uid,
-    userName,
-    value,
-    createdAt: date ?? serverTimestamp(),
-  });
-  await setDoc(
-    challengeSubDoc(groupId, groupementId, challengeId, 'periods', periodKey, 'progress', uid),
-    { name: userName, value: increment(value), updatedAt: serverTimestamp() },
-    { merge: true }
-  );
-  await setDoc(
-    challengeSubDoc(groupId, groupementId, challengeId, 'cumulative', uid),
-    { name: userName, value: increment(value), updatedAt: serverTimestamp() },
-    { merge: true }
-  );
-}
-
-export async function applyProgressOnly({ groupId, groupementId, challengeId, periodKey, uid, userName, value, date }) {
-  await writeGroupSideProgress({ groupId, groupementId, challengeId, periodKey, uid, userName, value, date });
-}
-
-// Utilisé par LogActivityScreen (une seule cible) : met à jour le groupe ET le profil.
-export async function logActivity({ groupId, groupementId, challengeId, periodKey, uid, userName, value }) {
-  const challengeSnap = await getDoc(challengeDoc(groupId, groupementId, challengeId));
-  const challenge = challengeSnap.exists() ? challengeSnap.data() : {};
-
-  await writeGroupSideProgress({ groupId, groupementId, challengeId, periodKey, uid, userName, value });
-
-  await recordUserActivity({
-    uid,
-    presetId: challenge.presetId,
-    label: challenge.label,
-    icon: challenge.icon,
-    unit: challenge.unit,
-    value,
-    groupId,
-    groupementId,
-    challengeId,
-  });
 }

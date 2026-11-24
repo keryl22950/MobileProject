@@ -29,7 +29,7 @@ export async function findChallengesForSession({ uid, presetId, at = new Date() 
         skipped.push({ label, reason: "l'événement n'a pas encore commencé" });
         continue;
       }
-      if (!groupement.recurring && current.periodEnd.getTime() < now.getTime()) {
+      if (!groupement.recurring && current.periodEnd.getTime() <= now.getTime()) {
         skipped.push({ label, reason: 'événement terminé' });
         continue;
       }

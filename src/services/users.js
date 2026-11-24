@@ -1,7 +1,6 @@
 import {
   collection,
   doc,
-  addDoc,
   setDoc,
   getDoc,
   getDocs,
@@ -9,7 +8,6 @@ import {
   where,
   orderBy,
   limit,
-  increment,
   onSnapshot,
   serverTimestamp,
   deleteDoc,
@@ -66,59 +64,6 @@ export function subscribeToUserStats(uid, callback) {
   return onSnapshot(collection(db, 'users', uid, 'stats'), (snap) => {
     callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
   });
-}
-
-// Enregistre une activité dans l'historique du profil. Avec `externalId`
-// (import depuis une montre), le document a un identifiant fixe : une
-// séance déjà importée est ignorée (retourne false).
-export async function recordUserActivity({
-  uid,
-  presetId,
-  label,
-  icon,
-  unit,
-  value,
-  groupId,
-  groupementId,
-  challengeId,
-  date,
-  externalId,
-  source,
-  durationMin,
-}) {
-  const data = {
-    presetId,
-    label,
-    icon,
-    unit,
-    value,
-    groupId: groupId || null,
-    groupementId: groupementId || null,
-    challengeId: challengeId || null,
-    createdAt: date ?? serverTimestamp(),
-  };
-
-  if (externalId) {
-    const ref = doc(db, 'users', uid, 'activities', externalId);
-    if ((await getDoc(ref)).exists()) return false;
-    await setDoc(ref, {
-      ...data,
-      imported: true,
-      externalId,
-      source: source ?? null,
-      durationMin: durationMin ?? null,
-    });
-  } else {
-    await addDoc(collection(db, 'users', uid, 'activities'), data);
-  }
-
-  const statsKey = presetId === 'custom' ? challengeId || label : presetId;
-  await setDoc(
-    doc(db, 'users', uid, 'stats', statsKey),
-    { icon, label, unit, total: increment(value), updatedAt: serverTimestamp() },
-    { merge: true }
-  );
-  return true;
 }
 
 export async function getImportedExternalIds(uid) {

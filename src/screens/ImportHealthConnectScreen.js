@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, StyleSheet, FlatList, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { ensureHealthConnectReady, readRecentSessions } from '../services/healthConnect';
 import { findChallengesForSession } from '../services/quickLog';
-import { applyProgressOnly } from '../services/challenges';
-import { recordUserActivity, getImportedExternalIds } from '../services/users';
+import { saveActivity } from '../services/activities';
+import { getImportedExternalIds } from '../services/users';
 import { CHALLENGE_PRESETS } from '../data/presets';
 import Screen from '../components/Screen';
 
@@ -17,6 +17,7 @@ export default function ImportHealthConnectScreen() {
   const [importingId, setImportingId] = useState(null);
   const [manual, setManual] = useState({});
   const [hasDistance, setHasDistance] = useState(true);
+  const importLock = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -37,6 +38,7 @@ export default function ImportHealthConnectScreen() {
   }, [uid]);
 
   async function handleImport(session) {
+    if (importLock.current) return;
     const preset = CHALLENGE_PRESETS.find((p) => p.id === session.presetId);
     const km = session.distanceKm ?? Number((manual[session.id] || '').replace(',', '.'));
     if (!preset || !Number.isFinite(km) || km <= 0) return;
@@ -74,10 +76,14 @@ export default function ImportHealthConnectScreen() {
   }
 
   async function confirmImport(session, preset, value, matches) {
+    if (importLock.current) return;
+    importLock.current = true;
     setImportingId(session.id);
     try {
-      // 1. Profil d'abord (identifiant fixe : jamais de doublon).
-      const added = await recordUserActivity({
+      await saveActivity({
+        userName: displayName,
+        activityId: `hc_${session.id}`,
+        targets: matches,
         uid,
         presetId: preset.id,
         label: preset.label,
@@ -89,31 +95,11 @@ export default function ImportHealthConnectScreen() {
         source: session.sourceLabel,
         durationMin: session.durationMin,
       });
-      if (!added) {
-        setSessions((prev) => prev.filter((s) => s.id !== session.id));
-        return;
-      }
-
-      // 2. Puis les challenges dont la période en cours contient cette séance.
-      await Promise.all(
-        matches.map((m) =>
-          applyProgressOnly({
-            groupId: m.groupId,
-            groupementId: m.groupementId,
-            challengeId: m.challengeId,
-            periodKey: m.periodKey,
-            uid,
-            userName: displayName,
-            value,
-            date: session.startTime,
-          })
-        )
-      );
-
       setSessions((prev) => prev.filter((s) => s.id !== session.id));
     } catch (err) {
       Alert.alert('Erreur', err.message);
     } finally {
+      importLock.current = false;
       setImportingId(null);
     }
   }

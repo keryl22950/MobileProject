@@ -7,8 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { findActiveChallengesForPreset } from '../services/quickLog';
 import { distanceKm } from '../utils/geo';
 import Screen from '../components/Screen';
-import { applyProgressOnly } from '../services/challenges';
-import { recordUserActivity } from '../services/users';
+import { createActivityId, saveActivity } from '../services/activities';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 
 const QUICK_PRESETS = CHALLENGE_PRESETS.filter((p) => p.id !== 'custom');
@@ -25,6 +24,8 @@ export default function QuickLogScreen({ navigation }) {
   const [saving, setSaving] = useState(false);
   const watchSubscription = useRef(null);
   const lastPoint = useRef(null);
+  const submission = useRef(null);
+  const saveLock = useRef(false);
 
   async function handleSelectPreset(p) {
     setPreset(p);
@@ -82,39 +83,33 @@ export default function QuickLogScreen({ navigation }) {
   }
 
   async function handleSave(value) {
+    if (saveLock.current) return;
     if (!Number.isFinite(value) || value <= 0) {
       Alert.alert('Valeur invalide', 'Indique une valeur supérieure à 0.');
       return;
     }
     const targets = (matches || []).filter((m) => selected[m.challengeId + m.groupId]);
 
+    saveLock.current = true;
     setSaving(true);
     try {
-      await Promise.all(
-        targets.map((m) =>
-          applyProgressOnly({
-            groupId: m.groupId,
-            groupementId: m.groupementId,
-            challengeId: m.challengeId,
-            periodKey: m.periodKey,
-            uid,
-            userName: displayName,
-            value,
-          })
-        )
-      );
-      await recordUserActivity({
+      if (!submission.current) submission.current = createActivityId(uid);
+      await saveActivity({
         uid,
+        userName: displayName,
+        activityId: submission.current,
         presetId: preset.id,
         label: preset.label,
         icon: preset.icon,
         unit: preset.unit,
         value,
+        targets,
       });
       navigation.goBack();
     } catch (err) {
       Alert.alert('Erreur', err.message);
     } finally {
+      saveLock.current = false;
       setSaving(false);
     }
   }
