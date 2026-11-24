@@ -7,7 +7,8 @@ import { useAuth } from '../context/AuthContext';
 import { findActiveChallengesForPreset } from '../services/quickLog';
 import { distanceKm } from '../utils/geo';
 import Screen from '../components/Screen';
-import { createActivityId, saveActivity } from '../services/activities';
+import { createActivityId } from '../services/activities';
+import { savePendingActivity } from '../services/pendingActivities';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 
 const QUICK_PRESETS = CHALLENGE_PRESETS.filter((p) => p.id !== 'custom');
@@ -94,7 +95,7 @@ export default function QuickLogScreen({ navigation }) {
     setSaving(true);
     try {
       if (!submission.current) submission.current = createActivityId(uid);
-      await saveActivity({
+      await savePendingActivity({
         uid,
         userName: displayName,
         activityId: submission.current,

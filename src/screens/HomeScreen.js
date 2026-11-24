@@ -4,6 +4,7 @@ import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { subscribeToMyGroups, leaveGroup } from '../services/groups';
 import Screen from '../components/Screen';
+import PendingActivities from '../components/PendingActivities';
 
 export default function HomeScreen({ navigation }) {
   const { uid } = useAuth();
@@ -58,6 +59,8 @@ export default function HomeScreen({ navigation }) {
           <Text style={styles.buttonText}>⌚ Importer depuis ma montre</Text>
         </Pressable>
       )}
+
+      {uid && <PendingActivities key={uid} uid={uid} />}
 
       <FlatList
         data={groups}

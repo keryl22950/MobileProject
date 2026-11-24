@@ -4,7 +4,7 @@ import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { ensureHealthConnectReady, readRecentSessions } from '../services/healthConnect';
 import { findChallengesForSession } from '../services/quickLog';
-import { saveActivity } from '../services/activities';
+import { savePendingActivity } from '../services/pendingActivities';
 import { getImportedExternalIds } from '../services/users';
 import { CHALLENGE_PRESETS } from '../data/presets';
 import Screen from '../components/Screen';
@@ -80,7 +80,7 @@ export default function ImportHealthConnectScreen() {
     importLock.current = true;
     setImportingId(session.id);
     try {
-      await saveActivity({
+      await savePendingActivity({
         userName: displayName,
         activityId: `hc_${session.id}`,
         targets: matches,

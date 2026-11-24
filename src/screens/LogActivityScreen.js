@@ -3,7 +3,8 @@ import { View, Text, StyleSheet, TextInput, Pressable, Alert } from 'react-nativ
 import * as Location from 'expo-location';
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
-import { createActivityId, saveActivity } from '../services/activities';
+import { createActivityId } from '../services/activities';
+import { savePendingActivity } from '../services/pendingActivities';
 import { distanceKm } from '../utils/geo';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 
@@ -68,7 +69,7 @@ export default function LogActivityScreen({ route, navigation }) {
     setSaving(true);
     try {
       if (!submission.current) submission.current = createActivityId(uid);
-      await saveActivity({
+      await savePendingActivity({
         uid,
         userName: displayName,
         activityId: submission.current,

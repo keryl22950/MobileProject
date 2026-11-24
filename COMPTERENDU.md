@@ -6,7 +6,7 @@
 
 ChallengeApp permet à des proches de se challenger dans des groupes : événements ponctuels ou récurrents, objectifs chiffrés et dynamiques, classements en temps réel et discussion. Une activité peut être saisie dans un challenge, enregistrée via QuickLog et le GPS au premier plan, ou importée depuis Health Connect sur Android.
 
-La navigation comprend 20 écrans. Les 10 services séparent Firebase, groupes, événements, challenges, enregistrement des activités, profils, recherche de challenges, statistiques, objectifs dynamiques et import natif. Le contexte d’authentification gère l’UID anonyme et le pseudo ; les hooks suivent notamment le remplissage des événements. Les calculs GPS sont dans `src/utils/geo.js`.
+La navigation comprend 20 écrans. Les 11 services séparent Firebase, groupes, événements, challenges, enregistrement des activités, profils, recherche de challenges, statistiques, objectifs dynamiques et import natif. Le contexte d’authentification gère l’UID anonyme et le pseudo ; les hooks suivent notamment le remplissage des événements. Les calculs GPS sont dans `src/utils/geo.js`.
 
 Stack déclarée : Expo 57, React Native 0.86, React 19, Firebase Auth/Firestore et React Navigation. Version mobile : 1.1.0 dans `app.config.js`. Le dev client est nécessaire ; Expo Go ne suffit pas. EAS dispose de profils développement, preview et production et des mises à jour OTA.
 
@@ -45,13 +45,14 @@ Le modèle est `groups → groupements → challenges → periods → progress /
 
 ### Lot 2 — Rendre les enregistrements cohérents et rejouables
 
-Socle réalisé le 24 novembre : `activities.js` remplace les écritures séparées des trois parcours par une transaction commune. Historique, statistiques, journal, progression et cumul sont enregistrés ensemble. L’identifiant `hc_<id>` protège les imports concurrents ; les saisies manuelles gardent un identifiant de tentative tant que leur écran reste ouvert. Une lecture serveur reconnaît aussi un succès dont la réponse a été perdue ou un import concurrent refusé par les règles de création seule.
+Socle réalisé le 24 novembre : `activities.js` remplace les écritures séparées des trois parcours par une transaction commune. Historique, statistiques, journal, progression et cumul sont enregistrés ensemble. L’identifiant `hc_<id>` protège les imports concurrents ; les saisies manuelles gardent un identifiant de tentative sur disque avant envoi, avec leurs cibles et leur date. Une lecture serveur reconnaît aussi un succès dont la réponse a été perdue ou un import concurrent refusé par les règles de création seule.
 
 - [x] Opération commune aux saisies simples, QuickLog et imports, avec identifiant stable pendant la tentative et transaction pour l’historique, les stats et les contributions. Verrou immédiat contre les doubles validations.
 - [x] Revérifier les événements et périodes à la confirmation, y compris la frontière exacte de fin, les changements d’unité et les suppressions pendant une boîte de dialogue.
 - [x] Tester double soumission, import simultané, refus d’écriture, reprise et changement de période sur émulateurs.
 - [x] Refuser sans écriture les sélections dépassant 100 challenges ou 8 groupes ; vérifier la limite autorisée sur émulateur. Ne retirer une séance de la liste qu’après succès global.
-- [ ] Ajouter une reprise persistante après fermeture de l’écran pour les saisies manuelles, puis le traitement idempotent par cible au-delà des limites. Aucun découpage partiel n’est actuellement effectué.
+- [x] Reprise persistante des saisies et imports sur cet appareil : identifiant, valeur, date et cibles sauvegardés avant envoi. Encart sur l’accueil pour réessayer ou retirer la copie locale, isolée par compte. La copie reste disponible après échec réseau ou échec du nettoyage local.
+- [ ] Traitement idempotent par cible au-delà des limites. Aucun découpage partiel n’est actuellement effectué. Les périodes expirées restent à résoudre manuellement, sans réattribution automatique.
 - [ ] Recette sur appareil des trois parcours, notamment perte de connexion et nouvelle tentative. Les transactions nécessitent une connexion ; les périodes sont vérifiées selon l’heure du téléphone au moment des lectures, pas par une validation temporelle serveur.
 
 Compatibilité : aucun changement de règles ni migration requis pour ces corrections. Les activités anciennes restent lisibles et ne sont pas rejouées. Les imports déjà partiellement enregistrés par les anciens clients nécessiteraient un audit séparé : leurs cibles initiales n’étaient pas conservées. Les nouveaux historiques mémorisent les cibles.
@@ -95,7 +96,7 @@ La lecture des documents `groups` reste autorisée à tout compte authentifié p
 
 ## Validation et limites
 
-- `npm test` : 14 tests de régression passent le 24 novembre 2026 (services avec frontières Firestore/natives simulées).
+- `npm test` : 20 tests de régression passent le 24 novembre 2026, dont 6 pour la reprise persistante (redémarrage simulé, stockage indisponible, nettoyage échoué, concurrence, isolation des comptes et conservation des tentatives périmées).
 - `npm run lint` : passe sans avertissement après réinstallation des dépendances manquantes. Syntaxe des écrans et services également vérifiée avec Babel.
 - Tests Auth/Firestore : les 11 scénarios d’activités et la suite de règles existante passent ensemble sur les émulateurs (12 tests), dont la limite de 100 challenges / 8 groupes.
 - Aucun déploiement Firebase, build EAS, publication OTA ou test sur téléphone effectué pendant cette revue.
