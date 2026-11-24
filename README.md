@@ -1,5 +1,7 @@
 # ChallengeApp
 
+État du projet et priorités : [compte rendu consolidé et feuille de route](COMPTERENDU.md).
+
 App mobile (Android + iOS) pour créer des groupes avec ses proches et se challenger
 ensemble sur des objectifs à deadline (course, pompes, lecture, jeux vidéo…), avec
 suivi GPS, import depuis une montre connectée, classement en temps réel et chat.
@@ -79,6 +81,7 @@ en dépend, et les anciens APK ne recevront pas du JS qui appelle un module qu'i
 
 ```bash
 npm run lint      # ESLint
+npm test          # Régressions des services (Node.js 18+ ; modules VM expérimentaux)
 npm run format    # Prettier
 ```
 
