@@ -8,6 +8,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "test": "node --experimental-vm-modules --test scripts/test-services.mjs",
     "format": "prettier --write App.js src"
   },
   "dependencies": {

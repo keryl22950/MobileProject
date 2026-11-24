@@ -139,11 +139,15 @@ export async function sendMessage({ groupId, uid, userName, text }) {
   });
 }
 
-export function subscribeToMessages(groupId, callback) {
-  const q = query(collection(db, 'groups', groupId, 'messages'), orderBy('createdAt', 'asc'), limit(200));
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  });
+export function subscribeToMessages(groupId, callback, onError) {
+  const q = query(collection(db, 'groups', groupId, 'messages'), orderBy('createdAt', 'desc'), limit(200));
+  return onSnapshot(
+    q,
+    (snap) => {
+      callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })).reverse());
+    },
+    onError
+  );
 }
 
 export async function updateGroup({ groupId, changes }) {

@@ -34,6 +34,7 @@ export default function QuickLogScreen({ navigation }) {
       setMatches(found);
       setSelected(Object.fromEntries(found.map((m) => [m.challengeId + m.groupId, true])));
     } catch (err) {
+      setPreset(null);
       Alert.alert('Erreur', err.message);
     } finally {
       setSearching(false);
@@ -81,7 +82,7 @@ export default function QuickLogScreen({ navigation }) {
   }
 
   async function handleSave(value) {
-    if (!value || value <= 0) {
+    if (!Number.isFinite(value) || value <= 0) {
       Alert.alert('Valeur invalide', 'Indique une valeur supérieure à 0.');
       return;
     }

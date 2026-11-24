@@ -1,6 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, FlatList, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TextInput,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+} from 'react-native';
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { subscribeToMessages, sendMessage } from '../services/groups';
@@ -10,21 +20,33 @@ export default function ChatScreen({ route }) {
   const { uid, displayName } = useAuth();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+  const sendLock = useRef(false);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    const unsubscribe = subscribeToMessages(groupId, setMessages);
+    const unsubscribe = subscribeToMessages(groupId, setMessages, () => {
+      Alert.alert(
+        'Discussion indisponible',
+        'Impossible de charger les messages. Vérifie ta connexion et ton accès au groupe.'
+      );
+    });
     return unsubscribe;
   }, [groupId]);
 
   async function handleSend() {
-    if (!text.trim()) return;
+    if (!text.trim() || sendLock.current) return;
     const toSend = text.trim();
-    setText('');
+    sendLock.current = true;
+    setSending(true);
     try {
       await sendMessage({ groupId, uid, userName: displayName, text: toSend });
-    } catch (err) {
-      console.error("Erreur d'envoi de message :", err);
+      setText('');
+    } catch {
+      Alert.alert('Envoi impossible', 'Ton message est conservé. Tu peux réessayer.');
+    } finally {
+      sendLock.current = false;
+      setSending(false);
     }
   }
 
@@ -52,9 +74,15 @@ export default function ChatScreen({ route }) {
           placeholder="Écrire un message..."
           placeholderTextColor={colors.muted}
           value={text}
+          editable={!sending}
           onChangeText={setText}
         />
-        <Pressable style={styles.sendButton} onPress={handleSend}>
+        <Pressable
+          style={styles.sendButton}
+          onPress={handleSend}
+          disabled={sending || !text.trim()}
+          accessibilityLabel="Envoyer le message"
+        >
           <Text style={styles.sendText}>➤</Text>
         </Pressable>
       </View>

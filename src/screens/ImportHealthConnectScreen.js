@@ -23,7 +23,10 @@ export default function ImportHealthConnectScreen() {
       try {
         const ready = await ensureHealthConnectReady();
         setHasDistance(ready.hasDistance);
-        const [recent, imported] = await Promise.all([readRecentSessions(), getImportedExternalIds(uid)]);
+        const [recent, imported] = await Promise.all([
+          readRecentSessions({ hasDistance: ready.hasDistance }),
+          getImportedExternalIds(uid),
+        ]);
         setSessions(recent.filter((s) => !imported.has(`hc_${s.id}`)));
       } catch (err) {
         setError(err.message);
@@ -36,7 +39,7 @@ export default function ImportHealthConnectScreen() {
   async function handleImport(session) {
     const preset = CHALLENGE_PRESETS.find((p) => p.id === session.presetId);
     const km = session.distanceKm ?? Number((manual[session.id] || '').replace(',', '.'));
-    if (!preset || !km || km <= 0) return;
+    if (!preset || !Number.isFinite(km) || km <= 0) return;
     const value = Number(km.toFixed(2));
 
     setImportingId(session.id);
@@ -154,7 +157,7 @@ export default function ImportHealthConnectScreen() {
           if (!preset) return null;
           const hasDistance = !!item.distanceKm;
           const typed = Number((manual[item.id] || '').replace(',', '.'));
-          const canImport = hasDistance || typed > 0;
+          const canImport = hasDistance || (Number.isFinite(typed) && typed > 0);
           return (
             <View style={styles.row}>
               <Text style={styles.icon}>{preset.icon}</Text>

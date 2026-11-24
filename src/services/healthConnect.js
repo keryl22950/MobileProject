@@ -83,7 +83,7 @@ export async function ensureHealthConnectReady() {
 }
 
 // Séances des `days` derniers jours, tous appareils confondus, dédoublonnées.
-export async function readRecentSessions({ days = 7 } = {}) {
+export async function readRecentSessions({ days = 7, hasDistance = false } = {}) {
   const now = new Date();
   const since = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
   const filter = {
@@ -91,7 +91,7 @@ export async function readRecentSessions({ days = 7 } = {}) {
   };
 
   const sessionsRes = await readRecords('ExerciseSession', filter);
-  const distancesRes = await readRecords('Distance', filter);
+  const distancesRes = hasDistance ? await readRecords('Distance', filter) : { records: [] };
   const distances = distancesRes.records || [];
 
   const sessions = (sessionsRes.records || [])
