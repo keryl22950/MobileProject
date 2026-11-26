@@ -28,7 +28,7 @@ export default function ImportHealthConnectScreen() {
           readRecentSessions({ hasDistance: ready.hasDistance }),
           getImportedExternalIds(uid),
         ]);
-        setSessions(recent.filter((s) => !imported.has(`hc_${s.id}`)));
+        setSessions(recent.filter((s) => !s.recordIds.some((id) => imported.has(`hc_${id}`))));
       } catch (err) {
         setError(err.message);
       } finally {
@@ -92,6 +92,7 @@ export default function ImportHealthConnectScreen() {
         value,
         date: session.startTime,
         externalId: `hc_${session.id}`,
+        externalIds: session.recordIds.map((id) => `hc_${id}`),
         source: session.sourceLabel,
         durationMin: session.durationMin,
       });

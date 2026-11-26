@@ -68,7 +68,12 @@ export function subscribeToUserStats(uid, callback) {
 
 export async function getImportedExternalIds(uid) {
   const snap = await getDocs(query(collection(db, 'users', uid, 'activities'), where('imported', '==', true)));
-  return new Set(snap.docs.map((d) => d.data().externalId));
+  return new Set(
+    snap.docs.flatMap((entry) => {
+      const { externalId, externalIds = [] } = entry.data();
+      return [externalId || entry.id, ...externalIds];
+    })
+  );
 }
 
 export function subscribeToUserActivities(uid, callback) {

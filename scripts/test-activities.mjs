@@ -133,6 +133,18 @@ test('Deux imports simultanés et une reprise ne comptent qu’une fois', async 
   assert.equal((await f.get(f.history)).imported, true);
 });
 
+test('Un import reconnaît l’identifiant différent utilisé par un ancien client', async () => {
+  const f = await fixture();
+  const legacy = f.api.doc(f.db, 'users', f.uid, 'activities', 'hc_legacy');
+  await f.api.setDoc(legacy, { imported: true, externalId: 'hc_legacy' });
+  assert.equal(
+    await f.service.saveActivity({ ...f.args, externalId: f.args.activityId, externalIds: ['hc_legacy'] }),
+    false
+  );
+  assert.equal(await f.get(f.history), undefined);
+  assert.equal(await f.get(f.stats), undefined);
+});
+
 test('Un refus d’écriture du journal annule aussi historique, stats et classement', async () => {
   const f = await fixture();
   await f.api.setDoc(f.api.doc(f.eventRef, 'challenges', 'one', 'periods', 'P0', 'activities', `${f.uid}_activity`), {

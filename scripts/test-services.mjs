@@ -188,6 +188,29 @@ test('Une séance utilise une seule source de distance et ignore ses relevés qu
   assert.equal((await fallback.api.readRecentSessions({ hasDistance: true }))[0].distanceKm, 7);
 });
 
+test('Deux sources quasi identiques partagent les alias, deux séances rapprochées restent distinctes', async () => {
+  const session = (id, dataOrigin, start, end) => ({
+    exerciseType: 1,
+    startTime: '2026-11-24T08:' + start + 'Z',
+    endTime: '2026-11-24T08:' + end + 'Z',
+    metadata: { id, dataOrigin },
+  });
+  const records = [
+    session('watch-first', 'watch', '00:00', '07:00'),
+    session('phone-copy', 'phone', '00:10', '07:10'),
+    session('watch-second', 'watch', '08:00', '16:00'),
+  ];
+  const { api } = await healthService(false, () => ({ records: [...records].reverse() }));
+  const result = await api.readRecentSessions();
+  assert.deepEqual(
+    result.map(({ id, recordIds }) => ({ id, recordIds })),
+    [
+      { id: 'watch-second', recordIds: ['watch-second'] },
+      { id: 'watch-first', recordIds: ['watch-first', 'phone-copy'] },
+    ]
+  );
+});
+
 test('Le chat sélectionne les 200 messages récents puis les affiche chronologiquement', async () => {
   const docs = Array.from({ length: 205 }, (_, i) => ({ id: String(i), data: () => ({ createdAt: i }) }));
   const unused = () => {

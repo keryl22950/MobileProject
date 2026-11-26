@@ -93,6 +93,17 @@ function sessionDistance(start, end, sessionOrigin, records) {
   return best ? best.meters / 1000 : null;
 }
 
+function sameSession(a, b) {
+  if (a.id === b.id) return true;
+  if (!a.origin || !b.origin || a.origin === b.origin || a.presetId !== b.presetId) return false;
+  const overlap = Math.min(a.endTime, b.endTime) - Math.max(a.startTime, b.startTime);
+  return (
+    Math.abs(a.startTime - b.startTime) <= 60000 &&
+    Math.abs(a.endTime - b.endTime) <= 60000 &&
+    overlap >= 0.9 * Math.max(a.endTime - a.startTime, b.endTime - b.startTime)
+  );
+}
+
 export async function ensureHealthConnectReady() {
   if (Platform.OS !== 'android') {
     throw new Error("L'import depuis une montre est disponible uniquement sur Android pour l'instant.");
@@ -138,11 +149,14 @@ export async function readRecentSessions({ days = 7, hasDistance = false } = {})
 
       const start = new Date(s.startTime);
       const end = new Date(s.endTime);
+      if (!(end > start)) return null;
       const origin = s.metadata?.dataOrigin;
       return {
         id: s.metadata?.id || s.startTime,
         presetId,
+        origin,
         startTime: start,
+        endTime: end,
         durationMin: Math.round((end - start) / 60000),
         distanceKm: sessionDistance(start, end, origin, distances),
         sourceLabel: SOURCE_LABELS[origin] || 'Autre application',
@@ -150,16 +164,26 @@ export async function readRecentSessions({ days = 7, hasDistance = false } = {})
     })
     .filter(Boolean);
 
-  // Même séance vue par deux applis : on garde une seule entrée (de préférence avec distance).
-  sessions.sort((a, b) => a.startTime - b.startTime);
-  const unique = [];
-  sessions.forEach((s) => {
-    const dupIndex = unique.findIndex(
-      (u) => u.presetId === s.presetId && Math.abs(u.startTime - s.startTime) < 10 * 60 * 1000
-    );
-    if (dupIndex === -1) unique.push(s);
-    else if (unique[dupIndex].distanceKm == null && s.distanceKm != null) unique[dupIndex] = s;
+  // L’identifiant ne change pas selon la permission Distance ou l’ordre des pages.
+  sessions.sort((a, b) => a.startTime - b.startTime || a.id.localeCompare(b.id));
+  const clusters = [];
+  for (const session of sessions) {
+    const cluster = clusters.find((entries) => entries.every((entry) => sameSession(entry, session)));
+    if (cluster) cluster.push(session);
+    else clusters.push([session]);
+  }
+  return clusters.reverse().map((entries) => {
+    const [first] = entries;
+    const representative = entries.find((entry) => entry.distanceKm !== null) || first;
+    const { presetId, sourceLabel, distanceKm, durationMin } = representative;
+    return {
+      id: first.id,
+      recordIds: [...new Set(entries.map((entry) => entry.id))],
+      startTime: first.startTime,
+      presetId,
+      sourceLabel,
+      distanceKm,
+      durationMin,
+    };
   });
-
-  return unique.reverse(); // plus récentes d'abord
 }

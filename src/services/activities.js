@@ -71,7 +71,7 @@ function activityMetadata(request, challenge) {
 
 function writeProfile(transaction, ref, request, metadata, date) {
   const first = request.targets.length === 1 ? request.targets[0] : {};
-  const { uid, value, targets, externalId, source, durationMin } = request;
+  const { uid, value, targets, externalId, externalIds, source, durationMin } = request;
   const { presetId, icon, label, unit } = metadata;
   const data = {
     ...metadata,
@@ -83,7 +83,13 @@ function writeProfile(transaction, ref, request, metadata, date) {
     challengeId: first.challengeId || null,
   };
   if (externalId)
-    Object.assign(data, { imported: true, externalId, source: source ?? null, durationMin: durationMin ?? null });
+    Object.assign(data, {
+      imported: true,
+      externalId,
+      externalIds: externalIds ?? [],
+      source: source ?? null,
+      durationMin: durationMin ?? null,
+    });
   transaction.set(ref, data);
   const statsKey = presetId === 'custom' ? first.challengeId || label : presetId;
   transaction.set(
@@ -118,9 +124,22 @@ function checkpointOf(snapshot) {
   return snapshot.data().pendingActivity ? snapshot.data().nextTarget : Infinity;
 }
 
+async function aliasAlreadyImported(transaction, request) {
+  if (!request.externalId) return false;
+  for (const alias of request.externalIds ?? []) {
+    if (alias === request.activityId) continue;
+    const snapshot = await transaction.get(doc(db, 'users', request.uid, 'activities', alias));
+    if (snapshot.data()?.imported === true) return true;
+    if (snapshot.data()?.pendingActivity) {
+      throw new Error('Cette séance est déjà en cours. Reprends la tentative existante depuis l’accueil.');
+    }
+  }
+  return false;
+}
+
 async function prepareLargeActivity(ref, request) {
   const existing = await getDocFromServer(ref);
-  if (existing.exists()) return;
+  if (existing.exists()) return true;
   const confirmedAt = new Date();
   const date = dateOfActivity(request.date, confirmedAt);
   const metadata = activityMetadata(request);
@@ -132,7 +151,7 @@ async function prepareLargeActivity(ref, request) {
     );
     for (const target of loaded) checkTarget(target, request, confirmedAt, date);
   }
-  const { uid, userName, activityId, value, targets, externalId, source, durationMin } = request;
+  const { uid, userName, activityId, value, targets, externalId, externalIds, source, durationMin } = request;
   const stored = {
     ...metadata,
     uid,
@@ -142,11 +161,13 @@ async function prepareLargeActivity(ref, request) {
     targets,
     date: date.toISOString(),
     externalId: externalId ?? null,
+    externalIds: externalIds ?? [],
     source: source ?? null,
     durationMin: durationMin ?? null,
   };
-  await runTransaction(db, async (transaction) => {
-    if ((await transaction.get(ref)).exists()) return;
+  return runTransaction(db, async (transaction) => {
+    if ((await transaction.get(ref)).exists()) return true;
+    if (await aliasAlreadyImported(transaction, request)) return false;
     // Sans createdAt ni imported, ce document reste hors de l’historique et des imports terminés.
     transaction.set(ref, {
       pendingActivity: true,
@@ -154,6 +175,7 @@ async function prepareLargeActivity(ref, request) {
       confirmedAt: confirmedAt.toISOString(),
       nextTarget: 0,
     });
+    return true;
   });
 }
 
@@ -178,10 +200,13 @@ export async function saveActivity(args) {
       ])
     ).values(),
   ];
-  const request = { ...args, targets };
+  const externalIds = [...new Set(args.externalIds || [])].filter(
+    (id) => typeof id === 'string' && id.startsWith('hc_') && !id.includes('/')
+  );
+  const request = { ...args, targets, externalIds };
   const ref = doc(db, 'users', uid, 'activities', activityId);
   const large = targets.length > TARGET_LIMIT || new Set(targets.map((target) => target.groupId)).size > GROUP_LIMIT;
-  if (large) await prepareLargeActivity(ref, request);
+  if (large && !(await prepareLargeActivity(ref, request))) return false;
   return finishActivity(ref, request);
 }
 
@@ -193,6 +218,7 @@ async function finishActivity(ref, request) {
         const snapshot = await transaction.get(ref);
         checkpoint = checkpointOf(snapshot);
         if (checkpoint === Infinity) return 'already-saved';
+        if (checkpoint === -1 && (await aliasAlreadyImported(transaction, request))) return 'already-saved';
 
         const pending = snapshot.data();
         const currentRequest = pending?.request ?? request;
