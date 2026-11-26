@@ -130,6 +130,20 @@ export async function ensureHealthConnectReady() {
   return { hasDistance: granted.some((p) => p.recordType === 'Distance') };
 }
 
+async function readAllRecords(type, filter) {
+  const records = [];
+  const seen = new Set();
+  let pageToken;
+  do {
+    const page = await readRecords(type, pageToken ? { ...filter, pageToken } : filter);
+    records.push(...(page.records || []));
+    pageToken = page.pageToken;
+    if (pageToken && seen.has(pageToken)) throw new Error('Health Connect a renvoyé la même page. Réessaie.');
+    if (pageToken) seen.add(pageToken);
+  } while (pageToken);
+  return records;
+}
+
 // Séances des `days` derniers jours, tous appareils confondus, dédoublonnées.
 export async function readRecentSessions({ days = 7, hasDistance = false } = {}) {
   const now = new Date();
@@ -138,11 +152,12 @@ export async function readRecentSessions({ days = 7, hasDistance = false } = {})
     timeRangeFilter: { operator: 'between', startTime: since.toISOString(), endTime: now.toISOString() },
   };
 
-  const sessionsRes = await readRecords('ExerciseSession', filter);
-  const distancesRes = hasDistance ? await readRecords('Distance', filter) : { records: [] };
-  const distances = distancesRes.records || [];
+  const [exercises, distances] = await Promise.all([
+    readAllRecords('ExerciseSession', filter),
+    hasDistance ? readAllRecords('Distance', filter) : [],
+  ]);
 
-  const sessions = (sessionsRes.records || [])
+  const sessions = exercises
     .map((s) => {
       const presetId = TYPE_TO_PRESET[s.exerciseType];
       if (!presetId) return null;

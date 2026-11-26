@@ -17,6 +17,8 @@ export default function ImportHealthConnectScreen() {
   const [importingId, setImportingId] = useState(null);
   const [manual, setManual] = useState({});
   const [hasDistance, setHasDistance] = useState(true);
+  const [days, setDays] = useState(7);
+  const [expanding, setExpanding] = useState(false);
   const importLock = useRef(false);
 
   useEffect(() => {
@@ -36,6 +38,23 @@ export default function ImportHealthConnectScreen() {
       }
     })();
   }, [uid]);
+
+  async function expandHistory() {
+    if (expanding || importingId) return;
+    setExpanding(true);
+    try {
+      const [recent, imported] = await Promise.all([
+        readRecentSessions({ days: 30, hasDistance }),
+        getImportedExternalIds(uid),
+      ]);
+      setSessions(recent.filter((s) => !s.recordIds.some((id) => imported.has(`hc_${id}`))));
+      setDays(30);
+    } catch (err) {
+      Alert.alert('Impossible de charger les séances', err.message);
+    } finally {
+      setExpanding(false);
+    }
+  }
 
   async function handleImport(session) {
     if (importLock.current) return;
@@ -123,11 +142,18 @@ export default function ImportHealthConnectScreen() {
 
   return (
     <Screen style={styles.container}>
-      <Text style={styles.title}>Séances des 7 derniers jours</Text>
+      <Text style={styles.title}>Séances des {days} derniers jours</Text>
       <Text style={styles.hint}>
         Elles viennent de Health Connect : active la synchronisation dans l'appli de ta montre (Garmin Connect, Samsung
         Health…) si ta séance n'apparaît pas.
       </Text>
+      {days === 7 && (
+        <Pressable accessibilityRole="button" onPress={expandHistory} disabled={expanding || !!importingId}>
+          <Text style={[styles.action, { marginBottom: spacing.md }]}>
+            {expanding ? 'Chargement…' : 'Voir jusqu’à 30 jours'}
+          </Text>
+        </Pressable>
+      )}
       {!hasDistance && (
         <Text style={styles.warning}>
           La permission « Distance » n'est pas accordée : les distances ne sont pas lues, tu devras les saisir à la
@@ -144,7 +170,7 @@ export default function ImportHealthConnectScreen() {
           if (!preset) return null;
           const hasDistance = !!item.distanceKm;
           const typed = Number((manual[item.id] || '').replace(',', '.'));
-          const canImport = hasDistance || (Number.isFinite(typed) && typed > 0);
+          const canImport = !expanding && (hasDistance || (Number.isFinite(typed) && typed > 0));
           return (
             <View style={styles.row}>
               <Text style={styles.icon}>{preset.icon}</Text>

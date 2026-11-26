@@ -211,6 +211,32 @@ test('Deux sources quasi identiques partagent les alias, deux séances rapproch�
   );
 });
 
+test('Les pages Health Connect de séances et de distances sont suivies séparément', async () => {
+  const startTime = '2026-11-24T08:00:00Z';
+  const endTime = '2026-11-24T08:30:00Z';
+  const calls = [];
+  const { api } = await healthService(true, (type, options) => {
+    calls.push([type, options.pageToken]);
+    if (!options.pageToken) return { records: [], pageToken: type + '2' };
+    assert.equal(options.pageToken, type + '2');
+    return {
+      records: [
+        type === 'ExerciseSession'
+          ? { exerciseType: 1, startTime, endTime, metadata: { id: 'second-page' } }
+          : { startTime, endTime, distance: { inMeters: 4000 } },
+      ],
+    };
+  });
+  const sessions = await api.readRecentSessions({ days: 30, hasDistance: true });
+  assert.deepEqual(
+    sessions.map(({ id, distanceKm }) => ({ id, distanceKm })),
+    [{ id: 'second-page', distanceKm: 4 }]
+  );
+  assert.equal(calls.length, 4);
+  const looping = await healthService(false, () => ({ pageToken: 'same' }));
+  await assert.rejects(looping.api.readRecentSessions(), /même page/);
+});
+
 test('Le chat sélectionne les 200 messages récents puis les affiche chronologiquement', async () => {
   const docs = Array.from({ length: 205 }, (_, i) => ({ id: String(i), data: () => ({ createdAt: i }) }));
   const unused = () => {
