@@ -12,7 +12,7 @@ after(async () => {
   await Promise.all(apps.map(deleteApp));
 });
 
-async function fixture() {
+async function fixture(beforeTransaction = () => {}) {
   let api,
     db,
     uid = 'user';
@@ -85,7 +85,13 @@ async function fixture() {
   }
   const periods = await loadService('groupements.js', { 'firebase/firestore': api, './firebase': { db } });
   const service = await loadService('activities.js', {
-    'firebase/firestore': api,
+    'firebase/firestore': {
+      ...api,
+      runTransaction: (...args) => {
+        beforeTransaction();
+        return api.runTransaction(...args);
+      },
+    },
     './firebase': { db },
     './groupements': periods,
   });
@@ -180,26 +186,62 @@ test('Saisie directe : les métadonnées sont lues dans le challenge', async () 
   assert.equal((await f.get(f.history)).presetId, 'running');
 });
 
-test('Profil seul, valeurs invalides et limites de sélection', async () => {
+test('Profil seul et valeurs invalides', async () => {
   const f = await fixture();
   for (const value of [NaN, Infinity, 0, -1]) await assert.rejects(f.service.saveActivity({ ...f.args, value }));
-  await assert.rejects(
-    f.service.saveActivity({
-      ...f.args,
-      targets: Array.from({ length: 101 }, (_, i) => ({ ...f.target, challengeId: String(i) })),
-    }),
-    /Trop de/
-  );
-  await assert.rejects(
-    f.service.saveActivity({
-      ...f.args,
-      targets: Array.from({ length: 9 }, (_, i) => ({ ...f.target, groupId: String(i) })),
-    }),
-    /Trop de/
-  );
   assert.equal(await f.get(f.history), undefined);
   await f.service.saveActivity({ ...f.args, targets: [] });
   assert.equal((await f.get(f.stats)).total, 5);
+});
+
+test('Une activité sur neuf groupes reprend au lot suivant après une interruption', async () => {
+  let transactions = 0;
+  const f = await fixture(() => {
+    if (++transactions === 3) throw new Error('connexion perdue');
+  });
+  const targets = await Promise.all(
+    Array.from({ length: 9 }, async (_, i) => {
+      const groupId = f.uid + '-batch-' + i;
+      const group = f.api.doc(f.db, 'groups', groupId);
+      const event = f.api.doc(group, 'groupements', 'event');
+      await f.api.setDoc(group, { ownerId: f.uid, memberIds: [f.uid], name: 'Test' });
+      await f.api.setDoc(event, { startedAt: new Date(Date.now() - 60000), durationHours: 1, recurring: false });
+      await f.api.setDoc(f.api.doc(event, 'challenges', 'one'), {
+        presetId: 'running',
+        label: 'Course',
+        icon: 'run',
+        unit: 'km',
+      });
+      return { ...f.target, groupId };
+    })
+  );
+  const args = { ...f.args, targets, externalId: f.args.activityId };
+  const score = (index) =>
+    f.api.doc(
+      f.db,
+      'groups',
+      targets[index].groupId,
+      'groupements',
+      'event',
+      'challenges',
+      'one',
+      'periods',
+      'P0',
+      'progress',
+      f.uid
+    );
+  await assert.rejects(f.service.saveActivity(args), /connexion perdue/);
+  assert.equal((await f.get(f.history)).nextTarget, 1);
+  assert.equal((await f.get(f.history)).imported, undefined);
+  assert.equal(await f.get(f.stats), undefined);
+  assert.equal((await f.get(score(0))).value, 5);
+  assert.equal(await f.get(score(1)), undefined);
+  // Une sélection différente sur un autre appareil reprend la demande initiale.
+  await Promise.all([f.service.saveActivity(args), f.service.saveActivity({ ...args, targets: [], value: 99 })]);
+  assert.equal((await f.get(f.history)).targets.length, 9);
+  assert.equal((await f.get(f.history)).imported, true);
+  assert.equal((await f.get(f.stats)).total, 5);
+  for (let i = 0; i < 9; i++) assert.equal((await f.get(score(i))).value, 5);
 });
 
 test('La limite de 100 challenges dans 8 groupes respecte les règles actuelles', async () => {

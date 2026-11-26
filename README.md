@@ -128,12 +128,14 @@ conservent le leur sur l'appareil avant tout envoi, avec la valeur, la date et l
 initiales. L'encart « Activités à reprendre » sur l'accueil permet de réessayer après
 fermeture ou redémarrage. Une connexion est nécessaire pour confirmer l'enregistrement.
 
-Les périodes et les types des challenges sont revérifiés à la confirmation. Une sélection
-périmée ou supérieure à 100 challenges / 8 groupes est refusée sans écriture partielle.
+Les périodes et les types des challenges sont revérifiés à la confirmation. Au-delà de
+100 challenges ou de 8 groupes, l’application valide les cibles et enregistre les
+contributions par lots. Reprendre une activité poursuit au premier lot incomplet.
+Le profil et les statistiques sont enregistrés avec le dernier lot.
 Une période expirée laisse la tentative visible, sans réattribution automatique. Retirer
 une reprise supprime uniquement la copie locale, jamais une activité serveur. Ces copies
-sont isolées par compte et ne survivent pas à une désinstallation. Le traitement au-delà
-des limites reste à réaliser. Les anciens imports partiellement enregistrés ne sont pas réparés
+sont isolées par compte. Un traitement par lots déjà commencé reste accessible depuis
+l’accueil sur le même compte. Les anciens imports partiellement enregistrés ne sont pas réparés
 automatiquement : leurs contributions d'origine ne sont pas connues avec certitude.
 
 ```
