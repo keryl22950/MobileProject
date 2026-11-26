@@ -65,6 +65,14 @@ Exécute `firebase deploy --only firestore:rules --project mon-projet-dev` pour 
 projet. Une configuration de développement absente ou pointant vers l’identifiant
 du projet de production revient aux émulateurs.
 
+## Retrouver son compte
+
+Active le fournisseur **E-mail/Mot de passe** dans Firebase Authentication sur le
+projet utilisé. Depuis **Profil → Mon compte**, associe une adresse au profil
+anonyme. Le même compte conserve ses groupes, son historique et ses statistiques.
+Sur un autre téléphone, choisis **J’ai déjà un compte** sur le premier écran.
+**Mot de passe oublié** envoie un lien de réinitialisation à l’adresse associée.
+
 ## Importer des séances depuis une montre (Android)
 
 L'app lit les séances dans **Health Connect**, la couche santé d'Android, quelle que soit la marque.

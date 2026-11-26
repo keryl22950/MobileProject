@@ -50,12 +50,12 @@ if (useEmulators) {
 // Connecte l'utilisateur anonymement dès le lancement de l'app.
 // Ça permet d'avoir un identifiant unique par personne sans système
 // de compte/mot de passe compliqué pour ce prototype.
-export function ensureSignedIn(callback) {
-  onAuthStateChanged(auth, (user) => {
+export function ensureSignedIn(callback, onError) {
+  return onAuthStateChanged(auth, (user) => {
     if (user) {
       callback(user);
     } else {
-      signInAnonymously(auth).catch((err) => console.error('Erreur de connexion anonyme :', err));
+      signInAnonymously(auth).catch(onError);
     }
   });
 }

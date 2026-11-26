@@ -14,6 +14,10 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 
+export async function getUserDisplayName(uid) {
+  return (await getDoc(doc(db, 'users', uid))).data()?.displayName ?? null;
+}
+
 export async function upsertUserProfile({ uid, displayName }) {
   await setDoc(
     doc(db, 'users', uid),

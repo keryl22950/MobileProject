@@ -1,15 +1,34 @@
 import React, { useState } from 'react';
-import { Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
+import AccountScreen from './AccountScreen';
+import Screen from '../components/Screen';
 
 export default function NamePromptScreen() {
   const { setDisplayName } = useAuth();
   const [name, setName] = useState('');
+  const [recovering, setRecovering] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  function handleConfirm() {
-    if (!name.trim()) return;
-    setDisplayName(name.trim());
+  async function handleConfirm() {
+    if (!name.trim() || saving) return;
+    setSaving(true);
+    try {
+      await setDisplayName(name.trim());
+    } catch {
+      Alert.alert('Profil indisponible', 'Impossible d’enregistrer ton prénom. Vérifie ta connexion.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (recovering) {
+    return (
+      <Screen style={{ flex: 1 }}>
+        <AccountScreen recover onCancel={() => setRecovering(false)} />
+      </Screen>
+    );
   }
 
   return (
@@ -25,8 +44,11 @@ export default function NamePromptScreen() {
         onChangeText={setName}
         autoFocus
       />
-      <Pressable style={styles.button} onPress={handleConfirm}>
+      <Pressable style={styles.button} disabled={saving} onPress={handleConfirm}>
         <Text style={styles.buttonText}>C'est parti</Text>
+      </Pressable>
+      <Pressable disabled={saving} onPress={() => setRecovering(true)}>
+        <Text style={styles.subtitle}>J’ai déjà un compte</Text>
       </Pressable>
     </KeyboardAvoidingView>
   );

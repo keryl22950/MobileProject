@@ -1,4 +1,11 @@
-import { EmailAuthProvider, linkWithCredential, sendEmailVerification } from 'firebase/auth';
+import {
+  EmailAuthProvider,
+  linkWithCredential,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signOut,
+} from 'firebase/auth';
 import { auth } from './firebase';
 
 export async function linkAnonymousAccount(email, password) {
@@ -17,6 +24,25 @@ export function sendAccountVerification() {
   return sendEmailVerification(user);
 }
 
+export function recoverAccount(email, password) {
+  if (!email.trim() || !password) throw new Error('Renseigne ton adresse e-mail et ton mot de passe.');
+  return signInWithEmailAndPassword(auth, email.trim(), password);
+}
+
+export async function requestPasswordReset(email) {
+  if (!email.trim()) throw new Error('Renseigne ton adresse e-mail.');
+  try {
+    await sendPasswordResetEmail(auth, email.trim());
+  } catch (error) {
+    if (error.code !== 'auth/user-not-found') throw error;
+  }
+}
+
+export function signOutOfAccount() {
+  if (auth.currentUser?.isAnonymous) throw new Error('Associe une adresse e-mail avant de quitter ce compte.');
+  return signOut(auth);
+}
+
 export function accountErrorMessage(error) {
   switch (error.code) {
     case 'auth/email-already-in-use':
@@ -30,6 +56,10 @@ export function accountErrorMessage(error) {
       return 'Vérifie ta connexion puis réessaie.';
     case 'auth/operation-not-allowed':
       return 'La connexion par e-mail est indisponible pour le moment.';
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+      return 'Adresse e-mail ou mot de passe incorrect.';
     default:
       return error.code ? 'L’opération a échoué. Réessaie dans un instant.' : error.message;
   }

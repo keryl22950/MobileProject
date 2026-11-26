@@ -95,7 +95,7 @@ actuelle reste utilisable en attendant un canal de distribution iPhone.
 ### Lot 5 — Rendre le compte récupérable
 
 - [x] Liaison facultative par e-mail et mot de passe depuis le profil. Firebase rattache la méthode de connexion au même UID. Le fournisseur e-mail/mot de passe doit être activé sur le projet Firebase avant la diffusion.
-- [ ] Parcours de connexion/récupération, déconnexion et traitement d’un identifiant déjà lié.
+- [x] Connexion et réinitialisation depuis « J’ai déjà un compte ». La déconnexion passe par « Mon compte » après association d’une adresse. Une adresse déjà utilisée laisse le profil actuel intact. Le pseudo est chargé depuis Firestore et mis en cache par compte et projet.
 - [ ] Tester réinstallation et changement d’appareil avec conservation des groupes, amis, stats et identifiants d’import.
 
 ### Lot 6 — Données et montée en charge

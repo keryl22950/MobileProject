@@ -1,10 +1,17 @@
 import React, { useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import { auth } from '../services/firebase';
-import { accountErrorMessage, linkAnonymousAccount, sendAccountVerification } from '../services/accounts';
+import {
+  accountErrorMessage,
+  linkAnonymousAccount,
+  recoverAccount,
+  requestPasswordReset,
+  sendAccountVerification,
+  signOutOfAccount,
+} from '../services/accounts';
 import { colors, spacing } from '../theme';
 
-export default function AccountScreen() {
+export default function AccountScreen({ recover = false, onCancel }) {
   const [accountEmail, setAccountEmail] = useState(auth.currentUser?.email);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,11 +50,25 @@ export default function AccountScreen() {
           >
             <Text style={styles.buttonText}>Envoyer un e-mail de vérification</Text>
           </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            disabled={busy}
+            onPress={() =>
+              Alert.alert('Se déconnecter ?', 'Tu pourras te reconnecter avec ton adresse e-mail.', [
+                { text: 'Annuler', style: 'cancel' },
+                { text: 'Se déconnecter', onPress: () => run(signOutOfAccount) },
+              ])
+            }
+          >
+            <Text style={styles.link}>Se déconnecter</Text>
+          </Pressable>
         </>
       ) : (
         <>
           <Text style={styles.text}>
-            Associe une adresse e-mail pour retrouver ce compte et ses activités sur un autre téléphone.
+            {recover
+              ? 'Connecte-toi pour retrouver tes groupes et tes activités.'
+              : 'Associe une adresse e-mail pour retrouver ce compte et ses activités sur un autre téléphone.'}
           </Text>
           <TextInput
             accessibilityLabel="Adresse e-mail"
@@ -65,13 +86,13 @@ export default function AccountScreen() {
           <TextInput
             accessibilityLabel="Mot de passe"
             style={styles.input}
-            placeholder="Mot de passe (8 caractères minimum)"
+            placeholder={recover ? 'Mot de passe' : 'Mot de passe (8 caractères minimum)'}
             placeholderTextColor={colors.muted}
             value={password}
             onChangeText={setPassword}
             editable={!busy}
             secureTextEntry
-            autoComplete="new-password"
+            autoComplete={recover ? 'current-password' : 'new-password'}
           />
           <Pressable
             accessibilityRole="button"
@@ -79,15 +100,43 @@ export default function AccountScreen() {
             disabled={busy}
             onPress={() =>
               run(async () => {
-                const linked = await linkAnonymousAccount(email, password);
-                setAccountEmail(linked.email);
+                if (recover) {
+                  await recoverAccount(email, password);
+                } else {
+                  const linked = await linkAnonymousAccount(email, password);
+                  setAccountEmail(linked.email);
+                  Alert.alert('Compte associé', 'Tes groupes et ton historique sont conservés.');
+                }
                 setPassword('');
-                Alert.alert('Compte associé', 'Tes groupes et ton historique sont conservés.');
               })
             }
           >
-            <Text style={styles.buttonText}>{busy ? 'Patiente…' : 'Associer cette adresse'}</Text>
+            <Text style={styles.buttonText}>
+              {busy ? 'Patiente…' : recover ? 'Se connecter' : 'Associer cette adresse'}
+            </Text>
           </Pressable>
+          {recover && (
+            <>
+              <Pressable
+                accessibilityRole="button"
+                disabled={busy}
+                onPress={() =>
+                  run(async () => {
+                    await requestPasswordReset(email);
+                    Alert.alert(
+                      'Réinitialisation',
+                      'Si cette adresse est associée à un compte, tu recevras un lien de réinitialisation.'
+                    );
+                  })
+                }
+              >
+                <Text style={styles.link}>Mot de passe oublié</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" disabled={busy} onPress={onCancel}>
+                <Text style={styles.link}>Retour</Text>
+              </Pressable>
+            </>
+          )}
         </>
       )}
     </ScrollView>
@@ -107,4 +156,5 @@ const styles = StyleSheet.create({
   },
   button: { backgroundColor: colors.primary, padding: spacing.md, borderRadius: 10, alignItems: 'center' },
   buttonText: { color: colors.primaryText, fontWeight: '700' },
+  link: { color: colors.primary, fontWeight: '700', paddingVertical: spacing.sm },
 });

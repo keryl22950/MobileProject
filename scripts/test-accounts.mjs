@@ -29,3 +29,24 @@ test('Lier un compte anonyme conserve son UID et permet de demander une vérific
   await service.sendAccountVerification();
   await assert.rejects(service.linkAnonymousAccount('other@example.com', 'test-password'), /déjà associé/);
 });
+
+test('La déconnexion et la récupération utilisent le même UID alors qu’une adresse occupée préserve l’invité', async () => {
+  const owner = await accountClient();
+  const { user } = await authSdk.signInAnonymously(owner.auth);
+  const email = 'recover-' + user.uid.toLowerCase() + '@example.com';
+  const uid = user.uid;
+  await owner.service.linkAnonymousAccount(email, 'test-password');
+  const guest = await accountClient();
+  const { user: guestUser } = await authSdk.signInAnonymously(guest.auth);
+  await assert.rejects(guest.service.linkAnonymousAccount(email, 'different-password'), {
+    code: 'auth/email-already-in-use',
+  });
+  assert.equal(guest.auth.currentUser.uid, guestUser.uid);
+  assert.equal(guest.auth.currentUser.isAnonymous, true);
+  assert.throws(() => guest.service.signOutOfAccount(), /Associe/);
+  await owner.service.signOutOfAccount();
+  assert.equal(owner.auth.currentUser, null);
+  await guest.service.requestPasswordReset(email);
+  const restored = await guest.service.recoverAccount(email, 'test-password');
+  assert.equal(restored.user.uid, uid);
+});
