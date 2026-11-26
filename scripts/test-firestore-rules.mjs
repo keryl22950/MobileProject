@@ -114,6 +114,61 @@ try {
     outsiderGroups.joinGroupByCode({ uid: outsider.uid, userName: 'Test', code: newGroup.inviteCode.toLowerCase() });
   assert.equal(await joinByCode(), newGroupId);
   assert.equal(await joinByCode(), newGroupId);
+  assert.match(firestoreHost, /^127\.0\.0\.1:\d+$/);
+  const settingsUrl = `${firestore.origin}/v1/projects/${projectId}/databases/(default)/documents/appConfig/groupPrivacy`;
+  const switchPrivacy = async (enabled) => {
+    const response = await fetch(settingsUrl, {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: { enabled: { booleanValue: enabled } } }),
+    });
+    assert.ok(response.ok, await response.text());
+  };
+  const fresh = await client('private-outsider');
+  const freshGroups = await groupService(fresh.db);
+  const privateGroup = doc(fresh.db, 'groups', newGroupId);
+  const freshMember = doc(privateGroup, 'members', fresh.uid);
+  await denied(setDoc(doc(fresh.db, 'appConfig', 'groupPrivacy'), { enabled: true }));
+  await switchPrivacy(true);
+  try {
+    await denied(getDoc(privateGroup));
+    await denied(getDocs(query(collection(fresh.db, 'groups'), where('inviteCode', '==', newGroup.inviteCode))));
+    await denied(updateDoc(privateGroup, { memberIds: arrayUnion(fresh.uid) }));
+    await denied(setDoc(freshMember, profile('participant')));
+    const wrongCode = writeBatch(fresh.db);
+    wrongCode.update(privateGroup, { memberIds: arrayUnion(fresh.uid) });
+    wrongCode.set(freshMember, { ...profile('participant'), inviteCode: 'ABCDEF' });
+    await denied(wrongCode.commit());
+    await denied(
+      setDoc(doc(fresh.db, 'groups', 'old-client-create'), {
+        ownerId: fresh.uid,
+        memberIds: [fresh.uid],
+        inviteCode: 'ABCDEG',
+      })
+    );
+    assert.equal(
+      await freshGroups.joinGroupByCode({
+        uid: fresh.uid,
+        userName: 'Test',
+        code: newGroup.inviteCode,
+      }),
+      newGroupId
+    );
+    assert.ok((await getDoc(privateGroup)).exists());
+    const myGroups = query(collection(fresh.db, 'groups'), where('memberIds', 'array-contains', fresh.uid));
+    assert.deepEqual(
+      (await getDocs(myGroups)).docs.map((entry) => entry.id),
+      [newGroupId]
+    );
+    const createdInPrivate = await freshGroups.createGroup({ uid: fresh.uid, userName: 'Test', name: 'Privé' });
+    assert.ok((await getDoc(doc(fresh.db, 'groups', createdInPrivate))).exists());
+  } finally {
+    await switchPrivacy(false);
+  }
+  assert.equal(
+    (await getDocs(query(collection(fresh.db, 'groups'), where('inviteCode', '==', newGroup.inviteCode)))).size,
+    1
+  );
   console.log('Firestore rules checks passed');
 } finally {
   await Promise.all(apps.map(deleteApp));

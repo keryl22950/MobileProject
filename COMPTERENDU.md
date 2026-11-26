@@ -66,7 +66,7 @@ La lecture des documents `groups` reste autorisée à tout compte authentifié p
 - [x] Index d’invitations par code exact. Les nouveaux groupes réservent un code de 10 caractères dans la transaction de création. Un réglage Firestore permet de réserver ensuite les groupes aux membres et d’exiger une invitation valide à l’adhésion. Les clients et les règles gardent le mode compatible jusqu’à la migration.
 - [ ] Migrer les codes existants, diffuser le nouveau client puis restreindre les lectures des groupes aux membres. Le script de diagnostic et de migration est prêt et les collisions sont couvertes par des tests. La migration, la diffusion et l’activation sur le projet Firebase restent à faire.
 - [x] Isoler Firebase en développement. Les émulateurs sont utilisés par défaut, avec prise en charge d’un projet de développement distinct via la configuration documentée dans le README. Les builds preview et production pointent vers le projet existant.
-- [ ] Vérifier anciens/nouveaux clients et refus attendus avec les émulateurs avant tout déploiement.
+- [x] Vérifier sur émulateur l’adhésion historique, l’adhésion indexée dans les deux modes, le refus de lecture et d’adhésion sans invitation en mode privé, la requête des seuls groupes du membre et le retour au mode compatible.
 
 ### Lot 4 — Fiabiliser les sources de santé et le GPS
 
