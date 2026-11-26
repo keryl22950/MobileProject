@@ -1,63 +1,19 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, Alert } from 'react-native';
-import * as Location from 'expo-location';
 import { colors, spacing } from '../theme';
+import { useForegroundGps } from '../hooks/useForegroundGps';
 import { useAuth } from '../context/AuthContext';
 import { createActivityId } from '../services/activities';
 import { savePendingActivity } from '../services/pendingActivities';
-import { distanceKm } from '../utils/geo';
-import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 
 export default function LogActivityScreen({ route, navigation }) {
   const { groupId, groupementId, challengeId, periodKey } = route.params;
   const { uid, displayName } = useAuth();
   const [manualValue, setManualValue] = useState('');
-  const [isTracking, setIsTracking] = useState(false);
-  const [trackedDistance, setTrackedDistance] = useState(0);
+  const { isTracking, starting, trackedDistance, startTracking, stopTracking } = useForegroundGps();
   const [saving, setSaving] = useState(false);
-  const watchSubscription = useRef(null);
-  const lastPoint = useRef(null);
   const submission = useRef(null);
   const saveLock = useRef(false);
-
-  async function startTracking() {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission refusée', "L'accès à la position est nécessaire pour le suivi GPS.");
-      return;
-    }
-
-    await activateKeepAwakeAsync(); // empêche l'écran de s'éteindre pendant le suivi
-
-    setIsTracking(true);
-    setTrackedDistance(0);
-    lastPoint.current = null;
-
-    watchSubscription.current = await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 5, timeInterval: 2000 },
-      (loc) => {
-        // Ignore les points peu fiables (précision annoncée par le GPS, en mètres) —
-        // mieux vaut manquer un point que d'ajouter une distance bidon.
-        if (loc.coords.accuracy != null && loc.coords.accuracy > 20) return;
-
-        const point = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
-        if (lastPoint.current) {
-          const d = distanceKm(lastPoint.current, point);
-          setTrackedDistance((prev) => prev + d);
-        }
-        lastPoint.current = point;
-      }
-    );
-  }
-
-  function stopTracking() {
-    if (watchSubscription.current) {
-      watchSubscription.current.remove();
-      watchSubscription.current = null;
-    }
-    deactivateKeepAwake();
-    setIsTracking(false);
-  }
 
   async function saveValue(value) {
     if (saveLock.current) return;
@@ -99,7 +55,7 @@ export default function LogActivityScreen({ route, navigation }) {
       <View style={styles.gpsCard}>
         <Text style={styles.gpsValue}>{trackedDistance.toFixed(2)} km</Text>
         {!isTracking ? (
-          <Pressable style={styles.button} onPress={startTracking}>
+          <Pressable style={styles.button} onPress={startTracking} disabled={starting}>
             <Text style={styles.buttonText}>▶ Démarrer le suivi</Text>
           </Pressable>
         ) : (
@@ -107,7 +63,7 @@ export default function LogActivityScreen({ route, navigation }) {
             <Text style={styles.buttonText}>⏹ Arrêter</Text>
           </Pressable>
         )}
-        {!isTracking && trackedDistance > 0 && (
+        {!starting && !isTracking && trackedDistance > 0 && (
           <Pressable style={[styles.button, styles.buttonPrimary]} onPress={handleSaveTracked} disabled={saving}>
             <Text style={styles.buttonText}>Enregistrer {trackedDistance.toFixed(2)} km</Text>
           </Pressable>

@@ -3,6 +3,73 @@ import { test } from 'node:test';
 import { loadService } from './load-service.mjs';
 import { planInvitations } from './migrate-group-invitations.mjs';
 
+test('Quitter le suivi GPS avant la fin du démarrage libère le maintien d’écran et le GPS', async () => {
+  const calls = [];
+  let finishWatch;
+  let watchStarted;
+  const starting = new Promise((resolve) => {
+    watchStarted = resolve;
+  });
+  const watch = new Promise((resolve) => {
+    finishWatch = resolve;
+  });
+  const api = await loadService('foregroundGps.js', {
+    'expo-location': {
+      requestForegroundPermissionsAsync: async () => ({ status: 'granted' }),
+      Accuracy: { BestForNavigation: 6 },
+      watchPositionAsync: (...args) => {
+        watchStarted(args);
+        return watch;
+      },
+    },
+    'expo-keep-awake': {
+      activateKeepAwakeAsync: async (tag) => calls.push(['activate', tag]),
+      deactivateKeepAwake: async (tag) => calls.push(['deactivate', tag]),
+    },
+    '../utils/geo': { distanceKm: () => 1 },
+  });
+  const session = api.startForegroundGps(
+    () => assert.fail('Session arrêtée'),
+    () => assert.fail('Session arrêtée')
+  );
+  const [, onPosition] = await starting;
+  session.stop();
+  onPosition({ coords: { latitude: 48, longitude: 2, accuracy: 5 } });
+  finishWatch({ remove: () => calls.push(['remove']) });
+  await session.ready;
+  assert.deepEqual(
+    calls.map(([action]) => action),
+    ['activate', 'deactivate', 'remove']
+  );
+  assert.equal(calls[0][1], calls[1][1]);
+});
+
+test('Un échec de démarrage GPS désactive le maintien d’écran et laisse remonter l’erreur', async () => {
+  let released = false;
+  const api = await loadService('foregroundGps.js', {
+    'expo-location': {
+      requestForegroundPermissionsAsync: async () => ({ status: 'granted' }),
+      Accuracy: { BestForNavigation: 6 },
+      watchPositionAsync: async () => {
+        throw new Error('GPS indisponible');
+      },
+    },
+    'expo-keep-awake': {
+      activateKeepAwakeAsync: async () => {},
+      deactivateKeepAwake: async () => {
+        released = true;
+      },
+    },
+    '../utils/geo': { distanceKm: () => 0 },
+  });
+  const session = api.startForegroundGps(
+    () => {},
+    () => {}
+  );
+  await assert.rejects(session.ready, /GPS indisponible/);
+  assert.equal(released, true);
+});
+
 test('Firebase sépare les émulateurs, le projet de développement et la production', async () => {
   const previous = globalThis.__DEV__;
   const keys = ['PROJECT_ID', 'API_KEY', 'APP_ID'].map((key) => 'EXPO_PUBLIC_FIREBASE_DEV_' + key);

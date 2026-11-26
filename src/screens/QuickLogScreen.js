@@ -1,15 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, ActivityIndicator, Alert } from 'react-native';
-import * as Location from 'expo-location';
 import { colors, spacing } from '../theme';
 import { CHALLENGE_PRESETS } from '../data/presets';
+import { useForegroundGps } from '../hooks/useForegroundGps';
 import { useAuth } from '../context/AuthContext';
 import { findActiveChallengesForPreset } from '../services/quickLog';
-import { distanceKm } from '../utils/geo';
 import Screen from '../components/Screen';
 import { createActivityId } from '../services/activities';
 import { savePendingActivity } from '../services/pendingActivities';
-import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 
 const QUICK_PRESETS = CHALLENGE_PRESETS.filter((p) => p.id !== 'custom');
 
@@ -20,11 +18,8 @@ export default function QuickLogScreen({ navigation }) {
   const [selected, setSelected] = useState({});
   const [searching, setSearching] = useState(false);
   const [manualValue, setManualValue] = useState('');
-  const [isTracking, setIsTracking] = useState(false);
-  const [trackedDistance, setTrackedDistance] = useState(0);
+  const { isTracking, starting, trackedDistance, startTracking, stopTracking } = useForegroundGps();
   const [saving, setSaving] = useState(false);
-  const watchSubscription = useRef(null);
-  const lastPoint = useRef(null);
   const submission = useRef(null);
   const saveLock = useRef(false);
 
@@ -45,42 +40,6 @@ export default function QuickLogScreen({ navigation }) {
 
   function toggleMatch(key) {
     setSelected((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
-
-  async function startTracking() {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission refusée', "L'accès à la position est nécessaire pour le suivi GPS.");
-      return;
-    }
-
-    await activateKeepAwakeAsync();
-
-    setIsTracking(true);
-    setTrackedDistance(0);
-    lastPoint.current = null;
-
-    watchSubscription.current = await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 5, timeInterval: 2000 },
-      (loc) => {
-        if (loc.coords.accuracy != null && loc.coords.accuracy > 20) return;
-
-        const point = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
-        if (lastPoint.current) {
-          setTrackedDistance((prev) => prev + distanceKm(lastPoint.current, point));
-        }
-        lastPoint.current = point;
-      }
-    );
-  }
-
-  function stopTracking() {
-    if (watchSubscription.current) {
-      watchSubscription.current.remove();
-      watchSubscription.current = null;
-    }
-    deactivateKeepAwake();
-    setIsTracking(false);
   }
 
   async function handleSave(value) {
@@ -178,7 +137,7 @@ export default function QuickLogScreen({ navigation }) {
             <View style={styles.gpsCard}>
               <Text style={styles.gpsValue}>{trackedDistance.toFixed(2)} km</Text>
               {!isTracking ? (
-                <Pressable style={styles.smallButton} onPress={startTracking}>
+                <Pressable style={styles.smallButton} onPress={startTracking} disabled={starting}>
                   <Text style={styles.buttonText}>▶ Démarrer</Text>
                 </Pressable>
               ) : (
@@ -186,7 +145,7 @@ export default function QuickLogScreen({ navigation }) {
                   <Text style={styles.buttonText}>⏹ Arrêter</Text>
                 </Pressable>
               )}
-              {!isTracking && trackedDistance > 0 && (
+              {!starting && !isTracking && trackedDistance > 0 && (
                 <Pressable
                   style={[styles.smallButton, styles.buttonPrimary]}
                   onPress={() => handleSave(Number(trackedDistance.toFixed(2)))}

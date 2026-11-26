@@ -73,7 +73,7 @@ La lecture des documents `groups` reste autorisée à tout compte authentifié p
 - [x] Health Connect utilise les distances de la source de la séance, ou la source qui couvre le plus de temps. Les intervalles qui se chevauchent ne sont comptés qu’une fois par source.
 - [x] Distinguer les séances rapprochées d’une même source et ne regrouper entre sources que des séances du même type presque superposées. Conserver un identifiant stable et les autres identifiants connus pour reconnaître les imports des anciennes versions.
 - [x] Parcourir toutes les pages Health Connect pour les séances et les distances. L’écran garde sept jours par défaut et propose de chercher jusqu’à trente jours.
-- [ ] Nettoyer les abonnements GPS et le maintien d’écran au départ des écrans et gérer les erreurs de démarrage.
+- [x] Libérer le GPS et le maintien d’écran à l’arrêt ou quand l’utilisateur quitte l’écran. Une permission ou un abonnement qui se termine après la fermeture est annulé. Une erreur GPS laisse la saisie manuelle disponible.
 - [ ] Ajouter le suivi en arrière-plan et une carte du parcours, avec permissions, nouveau build natif et recette sur téléphone.
 - [ ] Étudier HealthKit selon les besoins des testeurs iOS.
 
