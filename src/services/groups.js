@@ -14,6 +14,7 @@ import {
   updateDoc,
   limit,
   writeBatch,
+  runTransaction,
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -22,59 +23,102 @@ import { db } from './firebase';
 function generateInviteCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 10; i++) {
     code += chars[Math.floor(Math.random() * chars.length)];
   }
   return code;
 }
 
 export async function createGroup({ uid, userName, name }) {
-  const inviteCode = generateInviteCode();
-
   const groupRef = doc(collection(db, 'groups'));
-  const batch = writeBatch(db);
-  batch.set(groupRef, {
-    name,
-    inviteCode,
-    ownerId: uid,
-    memberIds: [uid],
-    createdAt: serverTimestamp(),
-  });
+  const group = { name, ownerId: uid, memberIds: [uid], createdAt: serverTimestamp() };
+  const memberRef = doc(groupRef, 'members', uid);
+  const member = { name: userName, role: 'creator', joinedAt: serverTimestamp() };
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const inviteCode = generateInviteCode();
+    const inviteRef = doc(db, 'groupInvites', inviteCode);
+    const created = await runTransaction(db, async (transaction) => {
+      let invite;
+      try {
+        invite = await transaction.get(inviteRef);
+      } catch (error) {
+        if (error.code === 'permission-denied') return 'legacy';
+        throw error;
+      }
+      if (invite.exists()) return false;
+      transaction.set(groupRef, { ...group, inviteCode });
+      transaction.set(memberRef, member);
+      transaction.set(inviteRef, { groupId: groupRef.id });
+      return true;
+    });
+    if (created === 'legacy') {
+      const batch = writeBatch(db);
+      batch.set(groupRef, { ...group, inviteCode });
+      batch.set(memberRef, member);
+      await batch.commit();
+    }
+    if (created) return groupRef.id;
+  }
+  throw new Error('Impossible de réserver un code d’invitation. Réessaie.');
+}
 
-  // Le créateur du groupe devient automatiquement "creator" (rôle le plus élevé).
-  batch.set(doc(groupRef, 'members', uid), {
-    name: userName,
-    role: 'creator',
-    joinedAt: serverTimestamp(),
-  });
-  await batch.commit();
+async function findGroupForInvitation(code) {
+  let invite;
+  try {
+    invite = await getDoc(doc(db, 'groupInvites', code));
+  } catch (error) {
+    if (error.code !== 'permission-denied') throw error;
+  }
+  if (invite?.exists()) return { ref: doc(db, 'groups', invite.data().groupId), indexed: true };
 
-  return groupRef.id;
+  // Transition : les groupes historiques peuvent ne pas encore avoir d’entrée dans l’index.
+  try {
+    const groups = await getDocs(query(collection(db, 'groups'), where('inviteCode', '==', code), limit(2)));
+    if (groups.size === 1) return { ref: groups.docs[0].ref, data: groups.docs[0].data(), indexed: false };
+    if (groups.size > 1) throw new Error('Ce code correspond à plusieurs groupes. Demande un nouveau code.');
+  } catch (error) {
+    if (error.code !== 'permission-denied') throw error;
+  }
+  throw new Error('Aucun groupe ne correspond à ce code.');
 }
 
 export async function joinGroupByCode({ uid, userName, code }) {
   const cleanCode = code.trim().toUpperCase();
-  const snap = await getDocs(query(collection(db, 'groups'), where('inviteCode', '==', cleanCode)));
-
-  if (snap.empty) {
-    throw new Error('Aucun groupe ne correspond à ce code.');
+  if (!/^[A-Z2-9]{6}([A-Z2-9]{4})?$/.test(cleanCode)) throw new Error('Vérifie le code d’invitation saisi.');
+  const { ref, indexed, data } = await findGroupForInvitation(cleanCode);
+  let group = data;
+  if (indexed) {
+    try {
+      const snapshot = await getDoc(ref);
+      if (!snapshot.exists()) throw new Error('Ce groupe n’existe plus.');
+      group = snapshot.data();
+    } catch (error) {
+      // Une personne invitée n’a pas encore accès au groupe en mode privé.
+      if (error.code !== 'permission-denied') throw error;
+    }
   }
 
-  const groupDoc = snap.docs[0];
-  const memberRef = doc(groupDoc.ref, 'members', uid);
-  const alreadyJoined = groupDoc.data().memberIds.includes(uid);
-  if (alreadyJoined && (await getDoc(memberRef)).exists()) return groupDoc.id;
+  const memberRef = doc(ref, 'members', uid);
+  const alreadyJoined = group?.memberIds.includes(uid);
+  if (alreadyJoined && (await getDoc(memberRef)).exists()) return ref.id;
 
   const batch = writeBatch(db);
-  if (!alreadyJoined) batch.update(groupDoc.ref, { memberIds: arrayUnion(uid) });
+  if (!alreadyJoined) batch.update(ref, { memberIds: arrayUnion(uid) });
   batch.set(memberRef, {
     name: userName,
-    role: groupDoc.data().ownerId === uid ? 'creator' : 'participant',
+    role: group?.ownerId === uid ? 'creator' : 'participant',
     joinedAt: serverTimestamp(),
+    ...(indexed ? { inviteCode: cleanCode } : {}),
   });
-  await batch.commit();
-
-  return groupDoc.id;
+  try {
+    await batch.commit();
+  } catch (error) {
+    if (error.code !== 'permission-denied') throw error;
+    // Une seconde validation simultanée peut arriver après la création de la fiche.
+    const member = await getDoc(memberRef);
+    if (!member.exists()) throw error;
+  }
+  return ref.id;
 }
 
 // Liste des groupes où l'utilisateur courant est membre (pour l'écran d'accueil).

@@ -4,6 +4,23 @@ service cloud.firestore {
 
         function isSignedIn() { return request.auth != null; }
 
+        function privateGroupsEnabled() {
+            let settings = /databases/$(database)/documents/appConfig/groupPrivacy;
+            return exists(settings) && get(settings).data.get('enabled', false) == true;
+        }
+
+        match /groupInvites/{code} {
+            function invitedGroup() {
+                return getAfter(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data;
+            }
+            allow get: if isSignedIn();
+            allow create: if isSignedIn() && code.matches('^[A-Z2-9]{6}([A-Z2-9]{4})?$')
+                && request.resource.data.keys().hasOnly(['groupId'])
+                && request.resource.data.groupId is string
+                && invitedGroup().ownerId == request.auth.uid
+                && invitedGroup().inviteCode == code;
+        }
+
         function groupData(groupId) {
             return get(/databases/$(database)/documents/groups/$(groupId)).data;
         }
@@ -19,13 +36,21 @@ service cloud.firestore {
         }
 
         match /groups/{groupId} {
-            // Les clients déjà distribués cherchent encore les invitations dans groups.
-            allow get, list: if isSignedIn();
+            // Garder le mode historique jusqu’à la migration et la diffusion du nouveau client.
+            allow get, list: if isSignedIn()
+                && (!privateGroupsEnabled() || request.auth.uid in resource.data.memberIds);
 
             allow create: if isSignedIn()
                 && request.resource.data.ownerId == request.auth.uid
                 && request.resource.data.memberIds.size() == 1
-                && request.auth.uid in request.resource.data.memberIds;
+                && request.auth.uid in request.resource.data.memberIds
+                && (!privateGroupsEnabled() || hasInvitationIndex());
+
+            function hasInvitationIndex() {
+                let code = request.resource.data.inviteCode;
+                return code is string && code.matches('^[A-Z2-9]{6}([A-Z2-9]{4})?$')
+                    && getAfter(/databases/$(database)/documents/groupInvites/$(code)).data.groupId == groupId;
+            }
 
             function changedGroupFields() {
                 return request.resource.data.diff(resource.data).affectedKeys();
@@ -45,6 +70,14 @@ service cloud.firestore {
                     && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1;
             }
 
+            function hasGroupInvitation() {
+                let member = getAfter(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid)).data;
+                let code = member.get('inviteCode', '');
+                return code is string && code.matches('^[A-Z2-9]{6}([A-Z2-9]{4})?$')
+                    && code == resource.data.inviteCode
+                    && get(/databases/$(database)/documents/groupInvites/$(code)).data.groupId == groupId;
+            }
+
             function transfersOwnership() {
                 let nextOwner = request.resource.data.ownerId;
                 return resource.data.ownerId == request.auth.uid
@@ -58,7 +91,8 @@ service cloud.firestore {
                 (isGroupAdmin(groupId) && changedGroupFields().hasOnly(['name'])
                     && request.resource.data.name is string)
                 || (changedGroupFields().hasOnly(['memberIds'])
-                    && (onlyAddsSelf() || (resource.data.ownerId != request.auth.uid && onlyRemovesSelf())))
+                    && ((onlyAddsSelf() && (!privateGroupsEnabled() || hasGroupInvitation()))
+                        || (resource.data.ownerId != request.auth.uid && onlyRemovesSelf())))
                 || transfersOwnership());
 
             allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid

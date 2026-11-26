@@ -27,7 +27,7 @@ export default function JoinGroupScreen({ navigation, route }) {
       <Text style={styles.label}>Code d'invitation</Text>
       <TextInput
         style={styles.input}
-        placeholder="Ex : ABC123"
+        placeholder="Ex : AB2CD3EF4G"
         placeholderTextColor={colors.muted}
         autoCapitalize="characters"
         value={code}

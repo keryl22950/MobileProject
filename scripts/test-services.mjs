@@ -109,6 +109,7 @@ test('Le chat sélectionne les 200 messages récents puis les affiche chronologi
       'serverTimestamp',
       'updateDoc',
       'writeBatch',
+      'runTransaction',
     ].map((key) => [key, unused])
   );
   const onError = () => {};

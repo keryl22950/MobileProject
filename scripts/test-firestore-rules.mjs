@@ -1,9 +1,24 @@
 import assert from 'node:assert/strict';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { connectAuthEmulator, getAuth, signInAnonymously } from 'firebase/auth';
+import * as firestoreSdk from 'firebase/firestore';
+import { loadService } from './load-service.mjs';
 import {
-  arrayRemove, arrayUnion, collection, connectFirestoreEmulator, deleteDoc, doc, getDocs,
-  getFirestore, getDoc, serverTimestamp, setDoc, updateDoc, where, query, writeBatch,
+  arrayRemove,
+  arrayUnion,
+  collection,
+  connectFirestoreEmulator,
+  deleteDoc,
+  doc,
+  getDocs,
+  getFirestore,
+  getDoc,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  where,
+  query,
+  writeBatch,
 } from 'firebase/firestore';
 
 const projectId = 'demo-challengeapp';
@@ -30,9 +45,7 @@ const member = (client, uid = client.uid) => doc(group(client), 'members', uid);
 const profile = (role) => ({ name: 'Test', role, joinedAt: serverTimestamp() });
 
 try {
-  const [owner, participant, outsider] = await Promise.all(
-    ['owner', 'participant', 'outsider'].map(client)
-  );
+  const [owner, participant, outsider] = await Promise.all(['owner', 'participant', 'outsider'].map(client));
   const create = writeBatch(owner.db);
   const release = doc(owner.db, 'appReleases', 'preview_android');
   await getDoc(release);
@@ -46,7 +59,8 @@ try {
   assert.equal((await getDocs(invitations)).size, 1);
   await denied(setDoc(member(outsider), profile('participant')));
   await denied(getDocs(collection(group(outsider), 'members')));
-  const score = (client, uid = client.uid) => doc(group(client), 'groupements', 'event', 'challenges', 'challenge', 'cumulative', uid);
+  const score = (client, uid = client.uid) =>
+    doc(group(client), 'groupements', 'event', 'challenges', 'challenge', 'cumulative', uid);
   await denied(setDoc(score(outsider), { value: 1 }));
 
   const join = writeBatch(participant.db);
@@ -86,6 +100,20 @@ try {
   await updateDoc(member(owner, participant.uid), { role: 'creator' });
   await updateDoc(group(owner), { memberIds: arrayRemove(owner.uid), ownerId: participant.uid });
   await deleteDoc(member(owner));
+
+  const groupService = (db) => loadService('groups.js', { 'firebase/firestore': firestoreSdk, './firebase': { db } });
+  const [ownerGroups, outsiderGroups] = await Promise.all([owner, outsider].map(({ db }) => groupService(db)));
+  const newGroupId = await ownerGroups.createGroup({ uid: owner.uid, userName: 'Test', name: 'Indexé' });
+  const newGroup = (await getDoc(doc(owner.db, 'groups', newGroupId))).data();
+  assert.equal(newGroup.inviteCode.length, 10);
+  const invite = (db) => doc(db, 'groupInvites', newGroup.inviteCode);
+  assert.equal((await getDoc(invite(outsider.db))).data().groupId, newGroupId);
+  await denied(getDocs(collection(outsider.db, 'groupInvites')));
+  await denied(setDoc(invite(outsider.db), { groupId: 'other' }));
+  const joinByCode = () =>
+    outsiderGroups.joinGroupByCode({ uid: outsider.uid, userName: 'Test', code: newGroup.inviteCode.toLowerCase() });
+  assert.equal(await joinByCode(), newGroupId);
+  assert.equal(await joinByCode(), newGroupId);
   console.log('Firestore rules checks passed');
 } finally {
   await Promise.all(apps.map(deleteApp));

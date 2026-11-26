@@ -63,7 +63,7 @@ Critère de fin : chaque action compte une seule fois partout, ou reste explicit
 
 La lecture des documents `groups` reste autorisée à tout compte authentifié pour la recherche par code des anciens clients. Les sous-collections sont réservées aux membres. Ne pas confondre ces deux niveaux de confidentialité.
 
-- [ ] Concevoir un mécanisme d’invitation dédié et contrôler l’adhésion par ce mécanisme.
+- [x] Index d’invitations par code exact. Les nouveaux groupes réservent un code de 10 caractères dans la transaction de création. Un réglage Firestore permet de réserver ensuite les groupes aux membres et d’exiger une invitation valide à l’adhésion. Les clients et les règles gardent le mode compatible jusqu’à la migration.
 - [ ] Migrer les codes existants, tester les collisions, diffuser le nouveau client puis restreindre les lectures des groupes aux membres.
 - [ ] Séparer Firebase développement/production et documenter la configuration.
 - [ ] Vérifier anciens/nouveaux clients et refus attendus avec les émulateurs avant tout déploiement.

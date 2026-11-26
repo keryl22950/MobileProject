@@ -120,6 +120,13 @@ firebase emulators:exec --only firestore,auth --project demo-challengeapp "npm r
 
 ## Données Firestore
 
+Les nouveaux groupes réservent un code dans `groupInvites/{code}`. Le mode compatible
+permet encore aux anciennes versions de rechercher les codes via `groups`. Activer
+`appConfig/groupPrivacy.enabled` exige des invitations indexées et réserve la lecture
+des groupes à leurs membres. Avant d’activer ce réglage, migrer les codes historiques
+et diffuser le nouveau client. Un lien d’invitation existant utilise toujours
+`challengeapp://join/<code>`.
+
 Les saisies directes, QuickLog et imports utilisent une transaction commune dans
 `src/services/activities.js` : historique, statistiques, journal, progression et cumul
 sont enregistrés ensemble. Une nouvelle tentative avec le même identifiant ne recompte
