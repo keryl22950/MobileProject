@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { colors, spacing } from '../theme';
 import { CHALLENGE_PRESETS } from '../data/presets';
+import GpsBackgroundOption from '../components/GpsBackgroundOption';
+import RouteMap from '../components/RouteMap';
 import { useForegroundGps } from '../hooks/useForegroundGps';
 import { useAuth } from '../context/AuthContext';
 import { findActiveChallengesForPreset } from '../services/quickLog';
@@ -18,7 +20,8 @@ export default function QuickLogScreen({ navigation }) {
   const [selected, setSelected] = useState({});
   const [searching, setSearching] = useState(false);
   const [manualValue, setManualValue] = useState('');
-  const { isTracking, starting, trackedDistance, startTracking, stopTracking } = useForegroundGps();
+  const { isTracking, starting, trackedDistance, routePoints, startTracking, stopTracking } = useForegroundGps();
+  const [backgroundGps, setBackgroundGps] = useState(false);
   const [saving, setSaving] = useState(false);
   const submission = useRef(null);
   const saveLock = useRef(false);
@@ -135,9 +138,14 @@ export default function QuickLogScreen({ navigation }) {
           <View>
             <Text style={styles.sectionTitle}>Suivi GPS</Text>
             <View style={styles.gpsCard}>
+              <GpsBackgroundOption
+                value={backgroundGps}
+                onChange={setBackgroundGps}
+                disabled={starting || isTracking}
+              />
               <Text style={styles.gpsValue}>{trackedDistance.toFixed(2)} km</Text>
               {!isTracking ? (
-                <Pressable style={styles.smallButton} onPress={startTracking} disabled={starting}>
+                <Pressable style={styles.smallButton} onPress={() => startTracking(backgroundGps)} disabled={starting}>
                   <Text style={styles.buttonText}>▶ Démarrer</Text>
                 </Pressable>
               ) : (
@@ -145,6 +153,7 @@ export default function QuickLogScreen({ navigation }) {
                   <Text style={styles.buttonText}>⏹ Arrêter</Text>
                 </Pressable>
               )}
+              {!starting && !isTracking && <RouteMap points={routePoints} />}
               {!starting && !isTracking && trackedDistance > 0 && (
                 <Pressable
                   style={[styles.smallButton, styles.buttonPrimary]}

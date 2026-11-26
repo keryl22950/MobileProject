@@ -5,7 +5,7 @@ module.exports = {
         name: IS_DEV ? 'ChallengeApp (Dev)' : 'ChallengeApp',
         slug: 'challenge-app',
         scheme: 'challengeapp',
-        version: '1.1.0',
+        version: '1.2.0',
         orientation: 'portrait',
         userInterfaceStyle: 'automatic',
         splash: { backgroundColor: '#111827' },
@@ -33,7 +33,15 @@ module.exports = {
             ],
         },
         plugins: [
-            ['expo-location', { locationAlwaysAndWhenInUsePermission: "L'app utilise ta position pour mesurer la distance parcourue." }],
+            ['expo-location', {
+                locationAlwaysAndWhenInUsePermission: "L'app mesure ton parcours quand tu démarres un suivi avec l'écran verrouillé.",
+                isIosBackgroundLocationEnabled: true,
+                isAndroidBackgroundLocationEnabled: true,
+                isAndroidForegroundServiceEnabled: true,
+            }],
+            ...(process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
+                ? [['react-native-maps', { androidGoogleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY }]]
+                : []),
             'react-native-health-connect',
             ['expo-build-properties', {
                 android: {

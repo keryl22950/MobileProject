@@ -1,6 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, Alert } from 'react-native';
 import { colors, spacing } from '../theme';
+import GpsBackgroundOption from '../components/GpsBackgroundOption';
+import RouteMap from '../components/RouteMap';
 import { useForegroundGps } from '../hooks/useForegroundGps';
 import { useAuth } from '../context/AuthContext';
 import { createActivityId } from '../services/activities';
@@ -10,7 +12,8 @@ export default function LogActivityScreen({ route, navigation }) {
   const { groupId, groupementId, challengeId, periodKey } = route.params;
   const { uid, displayName } = useAuth();
   const [manualValue, setManualValue] = useState('');
-  const { isTracking, starting, trackedDistance, startTracking, stopTracking } = useForegroundGps();
+  const { isTracking, starting, trackedDistance, routePoints, startTracking, stopTracking } = useForegroundGps();
+  const [backgroundGps, setBackgroundGps] = useState(false);
   const [saving, setSaving] = useState(false);
   const submission = useRef(null);
   const saveLock = useRef(false);
@@ -53,9 +56,10 @@ export default function LogActivityScreen({ route, navigation }) {
     <View style={styles.container}>
       <Text style={styles.sectionTitle}>Suivi GPS (course à pied, vélo...)</Text>
       <View style={styles.gpsCard}>
+        <GpsBackgroundOption value={backgroundGps} onChange={setBackgroundGps} disabled={starting || isTracking} />
         <Text style={styles.gpsValue}>{trackedDistance.toFixed(2)} km</Text>
         {!isTracking ? (
-          <Pressable style={styles.button} onPress={startTracking} disabled={starting}>
+          <Pressable style={styles.button} onPress={() => startTracking(backgroundGps)} disabled={starting}>
             <Text style={styles.buttonText}>▶ Démarrer le suivi</Text>
           </Pressable>
         ) : (
@@ -63,6 +67,7 @@ export default function LogActivityScreen({ route, navigation }) {
             <Text style={styles.buttonText}>⏹ Arrêter</Text>
           </Pressable>
         )}
+        {!starting && !isTracking && <RouteMap points={routePoints} />}
         {!starting && !isTracking && trackedDistance > 0 && (
           <Pressable style={[styles.button, styles.buttonPrimary]} onPress={handleSaveTracked} disabled={saving}>
             <Text style={styles.buttonText}>Enregistrer {trackedDistance.toFixed(2)} km</Text>

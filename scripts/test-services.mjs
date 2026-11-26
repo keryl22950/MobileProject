@@ -3,6 +3,72 @@ import { test } from 'node:test';
 import { loadService } from './load-service.mjs';
 import { planInvitations } from './migrate-group-invitations.mjs';
 
+test('Le GPS en arrière-plan ne mesure qu’une fois chaque point et arrête la collecte', async () => {
+  let task;
+  let persisted = null;
+  let started = false;
+  let stopped;
+  const didStop = new Promise((resolve) => {
+    stopped = resolve;
+  });
+  const deps = {
+    '@react-native-async-storage/async-storage': {
+      default: {
+        getItem: async () => persisted,
+        setItem: async (_, value) => {
+          persisted = value;
+        },
+        removeItem: async () => {
+          persisted = null;
+          stopped();
+        },
+      },
+    },
+    'react-native': { AppState: { addEventListener: () => ({ remove: () => {} }) } },
+    'expo-location': {
+      Accuracy: { BestForNavigation: 6 },
+      requestForegroundPermissionsAsync: async () => ({ status: 'granted' }),
+      requestBackgroundPermissionsAsync: async () => ({ status: 'granted' }),
+      hasStartedLocationUpdatesAsync: async () => started,
+      startLocationUpdatesAsync: async () => {
+        started = true;
+      },
+      stopLocationUpdatesAsync: async () => {
+        started = false;
+      },
+    },
+    'expo-task-manager': {
+      isAvailableAsync: async () => true,
+      defineTask: (_, handler) => {
+        task = handler;
+      },
+    },
+    '../utils/geo': { distanceKm: () => 1 },
+  };
+  const api = await loadService('backgroundGps.js', deps);
+  let track;
+  const session = api.startBackgroundGps(
+    (value) => {
+      track = value;
+    },
+    (error) => assert.fail(error)
+  );
+  await session.ready;
+  const point = (timestamp, accuracy = 5) => ({ timestamp, coords: { latitude: 48, longitude: 2, accuracy } });
+  await task({ data: { locations: [point(2), point(1), point(3, 50)] } });
+  await task({ data: { locations: [point(2), point(4)] } });
+  assert.deepEqual(
+    track.points.map((item) => item.timestamp),
+    [1, 2, 4]
+  );
+  assert.equal(track.distance, 2);
+  session.stop();
+  await didStop;
+  assert.equal(started, false);
+  await task({ data: { locations: [point(5)] } });
+  assert.equal(persisted, null);
+});
+
 test('Les objectifs dynamiques montent, baissent et respectent le minimum', async () => {
   const fail = () => assert.fail('Aucune lecture attendue');
   const api = await loadService('dynamicTargets.js', {

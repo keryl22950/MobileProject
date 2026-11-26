@@ -73,6 +73,20 @@ anonyme. Le même compte conserve ses groupes, son historique et ses statistique
 Sur un autre téléphone, choisis **J’ai déjà un compte** sur le premier écran.
 **Mot de passe oublié** envoie un lien de réinitialisation à l’adresse associée.
 
+## Enregistrer un parcours GPS
+
+Dans QuickLog ou dans un challenge, active « Continuer lorsque l’écran est
+verrouillé » avant de démarrer. Autorise l’accès en arrière-plan sur le téléphone.
+Arrêter le suivi ou quitter l’écran arrête la collecte. Le tracé apparaît après
+l’arrêt, et seule la distance est envoyée lors de l’enregistrement de l’activité.
+Forcer l’arrêt de l’application peut interrompre la collecte.
+
+Le suivi en arrière-plan et la carte nécessitent un nouveau build pour la version
+`1.2.0`. Pour afficher le fond Google Maps sur Android, configure
+`EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` pour le build et ses futures mises à jour Expo.
+Sans clé Android, l’application affiche le tracé seul. iOS utilise Apple Plans.
+Les APK `1.1.0` ne peuvent recevoir que les mises à jour de leur version native.
+
 ## Importer des séances depuis une montre (Android)
 
 L'app lit les séances dans **Health Connect**, la couche santé d'Android, quelle que soit la marque.

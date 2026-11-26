@@ -6,9 +6,9 @@
 
 ChallengeApp permet à des proches de se challenger dans des groupes : événements ponctuels ou récurrents, objectifs chiffrés et dynamiques, classements en temps réel et discussion. Une activité peut être saisie dans un challenge, enregistrée via QuickLog et le GPS au premier plan, ou importée depuis Health Connect sur Android.
 
-La navigation comprend 20 écrans. Les 11 services séparent Firebase, groupes, événements, challenges, enregistrement des activités, profils, recherche de challenges, statistiques, objectifs dynamiques et import natif. Le contexte d’authentification gère l’UID anonyme et le pseudo ; les hooks suivent notamment le remplissage des événements. Les calculs GPS sont dans `src/utils/geo.js`.
+La navigation comprend 21 écrans. Les services séparent notamment Firebase, les groupes, les événements, les challenges, les activités, les comptes, la pagination et les intégrations natives. Le contexte d’authentification gère l’UID et le pseudo. Les calculs GPS sont dans `src/utils/geo.js`.
 
-Stack déclarée : Expo 57, React Native 0.86, React 19, Firebase Auth/Firestore et React Navigation. Version mobile : 1.1.0 dans `app.config.js`. Le dev client est nécessaire ; Expo Go ne suffit pas. EAS dispose de profils développement, preview et production et des mises à jour OTA.
+Stack déclarée : Expo 57, React Native 0.86, React 19, Firebase Auth/Firestore et React Navigation. La version 1.2.0 de `app.config.js` correspond aux nouvelles permissions GPS et à la carte. EAS dispose de profils développement, preview et production et des mises à jour OTA.
 
 Le modèle est `groups → groupements → challenges → periods → progress / activities`, avec cumul par challenge. Les profils contiennent amis, statistiques et historique. Le mot interne `groupement` désigne un événement : le conserver tant qu’une migration explicite n’est pas prévue.
 
@@ -74,7 +74,7 @@ La lecture des documents `groups` reste autorisée à tout compte authentifié p
 - [x] Distinguer les séances rapprochées d’une même source et ne regrouper entre sources que des séances du même type presque superposées. Conserver un identifiant stable et les autres identifiants connus pour reconnaître les imports des anciennes versions.
 - [x] Parcourir toutes les pages Health Connect pour les séances et les distances. L’écran garde sept jours par défaut et propose de chercher jusqu’à trente jours.
 - [x] Libérer le GPS et le maintien d’écran à l’arrêt ou quand l’utilisateur quitte l’écran. Une permission ou un abonnement qui se termine après la fermeture est annulé. Une erreur GPS laisse la saisie manuelle disponible.
-- [ ] Ajouter le suivi en arrière-plan et une carte du parcours, avec permissions, nouveau build natif et recette sur téléphone.
+- [ ] Créer le build natif 1.2.0 et tester sur téléphone la collecte écran verrouillé, le refus d’autorisation, l’arrêt et la carte. Le suivi facultatif et le tracé sont développés. Sur Android, le fond de carte utilise une clé Google Maps et le tracé reste visible sans clé.
 - [x] Étudier HealthKit pour les séances des testeurs iOS. L’intégration reste à prioriser quand un build iPhone pourra être distribué.
 
 L’import iOS pourrait reprendre la confirmation et les classements d’Android en lisant

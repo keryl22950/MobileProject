@@ -41,12 +41,12 @@ export function startForegroundGps(onDistance, onError) {
       }
       const watch = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 5, timeInterval: 2000 },
-        ({ coords }) => {
+        ({ coords, timestamp }) => {
           if (stopped || (coords.accuracy != null && coords.accuracy > 20)) return;
           if (!Number.isFinite(coords.latitude) || !Number.isFinite(coords.longitude)) return;
           if (previous) total += distanceKm(previous, coords);
           previous = coords;
-          onDistance(total);
+          onDistance(total, { latitude: coords.latitude, longitude: coords.longitude, timestamp });
         },
         (reason) => {
           if (stopped) return;
