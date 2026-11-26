@@ -5,8 +5,10 @@ import { SourceTextModule, SyntheticModule } from 'node:vm';
 export async function loadService(file, dependencies) {
   const source = await readFile(new URL(`../src/services/${file}`, import.meta.url), 'utf8');
   const module = new SourceTextModule(source);
-  await module.link((name) => {
-    const values = dependencies[name];
+  await module.link(async (name) => {
+    const values =
+      dependencies[name] ??
+      (name.startsWith('./') ? await loadService(name.slice(2) + '.js', dependencies) : undefined);
     assert.ok(values, `Missing dependency: ${name}`);
     return new SyntheticModule(Object.keys(values), function () {
       for (const [key, value] of Object.entries(values)) this.setExport(key, value);

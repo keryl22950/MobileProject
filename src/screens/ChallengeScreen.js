@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable, ActivityIndicator } from 'react-native';
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
-import { subscribeToChallenge, subscribeToProgress, subscribeToActivities } from '../services/challenges';
+import { subscribeToChallenge, subscribeToProgress, getChallengeActivityFeed } from '../services/challenges';
+import { usePagedFeed } from '../hooks/usePagedFeed';
+import FeedMore from '../components/FeedMore';
 import { subscribeToMembers } from '../services/groups';
 import { subscribeToGroupement } from '../services/groupements';
 import { getEffectiveTarget } from '../services/dynamicTargets';
@@ -33,7 +35,12 @@ export default function ChallengeScreen({ navigation, route }) {
   // ⚠️ Tous les hooks (useState / useEffect) doivent rester AVANT le "return" anticipé plus bas.
   const [challenge, setChallenge] = useState(null);
   const [progress, setProgress] = useState([]);
-  const [activities, setActivities] = useState([]);
+  const feed = usePagedFeed(
+    useMemo(
+      () => (periodKey ? getChallengeActivityFeed(groupId, groupementId, challengeId, periodKey) : null),
+      [groupId, groupementId, challengeId, periodKey]
+    )
+  );
   const [members, setMembers] = useState([]);
   const [groupement, setGroupement] = useState(null);
   const [target, setTarget] = useState(null);
@@ -43,17 +50,14 @@ export default function ChallengeScreen({ navigation, route }) {
     const u2 = subscribeToMembers(groupId, setMembers);
     const u3 = subscribeToGroupement(groupId, groupementId, setGroupement);
     let u4 = () => {};
-    let u5 = () => {};
     if (periodKey) {
       u4 = subscribeToProgress(groupId, groupementId, challengeId, periodKey, setProgress);
-      u5 = subscribeToActivities(groupId, groupementId, challengeId, periodKey, setActivities);
     }
     return () => {
       u1();
       u2();
       u3();
       u4();
-      u5();
     };
   }, [groupId, groupementId, challengeId, periodKey]);
 
@@ -152,10 +156,12 @@ export default function ChallengeScreen({ navigation, route }) {
           />
 
           <Text style={[styles.sectionTitle, { marginTop: spacing.md }]}>Activités récentes</Text>
-          {activities.length === 0 ? (
-            <Text style={styles.empty}>Aucune activité enregistrée.</Text>
-          ) : (
-            activities.map((a) => (
+          <FlatList
+            data={feed.items}
+            keyExtractor={(item) => item.id}
+            ListFooterComponent={<FeedMore {...feed} />}
+            ListEmptyComponent={<Text style={styles.empty}>Aucune activité enregistrée.</Text>}
+            renderItem={({ item: a }) => (
               <View key={a.id} style={styles.activityRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.activityName}>{a.userName}</Text>
@@ -165,8 +171,8 @@ export default function ChallengeScreen({ navigation, route }) {
                   +{a.value} {challenge.unit}
                 </Text>
               </View>
-            ))
-          )}
+            )}
+          />
 
           {!readOnly && (
             <Pressable

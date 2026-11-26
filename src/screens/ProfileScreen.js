@@ -1,63 +1,63 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable } from 'react-native';
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import Screen from '../components/Screen';
-import { subscribeToUserStats, subscribeToUserActivities } from '../services/users';
+import { subscribeToUserStats, getUserActivityFeed } from '../services/users';
+import { usePagedFeed } from '../hooks/usePagedFeed';
+import FeedMore from '../components/FeedMore';
 
 export default function ProfileScreen({ navigation }) {
   const { displayName, uid } = useAuth();
   const [stats, setStats] = useState([]);
-  const [activities, setActivities] = useState([]);
+  const feed = usePagedFeed(useMemo(() => getUserActivityFeed(uid), [uid]));
 
   useEffect(() => {
     const unsubscribe = subscribeToUserStats(uid, setStats);
     return unsubscribe;
   }, [uid]);
 
-  useEffect(() => {
-    const unsubscribe = subscribeToUserActivities(uid, setActivities);
-    return unsubscribe;
-  }, [uid]);
-
   return (
     <Screen style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.avatar}>👤</Text>
-        <Text style={styles.name}>{displayName}</Text>
-      </View>
-
-      <Pressable style={styles.friendsButton} onPress={() => navigation.navigate('Friends')}>
-        <Text style={styles.buttonText}>👥 Amis</Text>
-      </Pressable>
-      <Pressable style={styles.friendsButton} onPress={() => navigation.navigate('Account')}>
-        <Text style={styles.buttonText}>Mon compte</Text>
-      </Pressable>
-
-      <Text style={styles.sectionTitle}>Accomplissements cumulés</Text>
-      {stats.length === 0 ? (
-        <Text style={styles.empty}>Aucune activité enregistrée encore.</Text>
-      ) : (
-        <FlatList
-          data={stats}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ gap: spacing.sm }}
-          renderItem={({ item }) => (
-            <View style={styles.row}>
-              <Text style={styles.icon}>{item.icon}</Text>
-              <Text style={styles.label}>{item.label}</Text>
-              <Text style={styles.value}>
-                {(item.total || 0).toFixed(1)} {item.unit}
-              </Text>
+      <FlatList
+        data={feed.items}
+        keyExtractor={(item) => item.id}
+        ListFooterComponent={<FeedMore {...feed} />}
+        ListEmptyComponent={<Text style={styles.empty}>Aucune activité enregistrée encore.</Text>}
+        ListHeaderComponent={
+          <>
+            <View style={styles.header}>
+              <Text style={styles.avatar}>👤</Text>
+              <Text style={styles.name}>{displayName}</Text>
             </View>
-          )}
-        />
-      )}
-      <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Historique</Text>
-      {activities.length === 0 ? (
-        <Text style={styles.empty}>Aucune activité enregistrée encore.</Text>
-      ) : (
-        activities.map((a) => {
+
+            <Pressable style={styles.friendsButton} onPress={() => navigation.navigate('Friends')}>
+              <Text style={styles.buttonText}>👥 Amis</Text>
+            </Pressable>
+            <Pressable style={styles.friendsButton} onPress={() => navigation.navigate('Account')}>
+              <Text style={styles.buttonText}>Mon compte</Text>
+            </Pressable>
+
+            <Text style={styles.sectionTitle}>Accomplissements cumulés</Text>
+            {stats.length === 0 ? (
+              <Text style={styles.empty}>Aucune activité enregistrée encore.</Text>
+            ) : (
+              <View style={{ gap: spacing.sm }}>
+                {stats.map((item) => (
+                  <View key={item.id} style={styles.row}>
+                    <Text style={styles.icon}>{item.icon}</Text>
+                    <Text style={styles.label}>{item.label}</Text>
+                    <Text style={styles.value}>
+                      {(item.total || 0).toFixed(1)} {item.unit}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Historique</Text>
+          </>
+        }
+        renderItem={({ item: a }) => {
           const date = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
           return (
             <View key={a.id} style={styles.historyRow}>
@@ -74,8 +74,8 @@ export default function ProfileScreen({ navigation }) {
               </Text>
             </View>
           );
-        })
-      )}
+        }}
+      />
     </Screen>
   );
 }

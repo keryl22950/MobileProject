@@ -17,6 +17,7 @@ import {
   runTransaction,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { createPagedFeed } from './pagedFeed';
 
 // Génère un code court, sans caractères ambigus (I/O/0/1), pour inviter
 // facilement à l'oral ou par SMS.
@@ -183,15 +184,8 @@ export async function sendMessage({ groupId, uid, userName, text }) {
   });
 }
 
-export function subscribeToMessages(groupId, callback, onError) {
-  const q = query(collection(db, 'groups', groupId, 'messages'), orderBy('createdAt', 'desc'), limit(200));
-  return onSnapshot(
-    q,
-    (snap) => {
-      callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })).reverse());
-    },
-    onError
-  );
+export function getMessageFeed(groupId) {
+  return createPagedFeed(collection(db, 'groups', groupId, 'messages'), 200);
 }
 
 export async function updateGroup({ groupId, changes }) {

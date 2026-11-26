@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View,
@@ -13,26 +13,18 @@ import {
 } from 'react-native';
 import { colors, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
-import { subscribeToMessages, sendMessage } from '../services/groups';
+import { getMessageFeed, sendMessage } from '../services/groups';
+import { usePagedFeed } from '../hooks/usePagedFeed';
+import FeedMore from '../components/FeedMore';
 
 export default function ChatScreen({ route }) {
   const { groupId } = route.params;
   const { uid, displayName } = useAuth();
-  const [messages, setMessages] = useState([]);
+  const feed = usePagedFeed(useMemo(() => getMessageFeed(groupId), [groupId]));
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const sendLock = useRef(false);
   const insets = useSafeAreaInsets();
-
-  useEffect(() => {
-    const unsubscribe = subscribeToMessages(groupId, setMessages, () => {
-      Alert.alert(
-        'Discussion indisponible',
-        'Impossible de charger les messages. Vérifie ta connexion et ton accès au groupe.'
-      );
-    });
-    return unsubscribe;
-  }, [groupId]);
 
   async function handleSend() {
     if (!text.trim() || sendLock.current) return;
@@ -53,7 +45,10 @@ export default function ChatScreen({ route }) {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <FlatList
-        data={messages}
+        data={feed.items}
+        inverted
+        maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: 30 }}
+        ListFooterComponent={<FeedMore {...feed} label="Afficher les messages précédents" />}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: spacing.md, gap: spacing.sm }}
         renderItem={({ item }) => {

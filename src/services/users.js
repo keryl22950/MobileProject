@@ -6,13 +6,13 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
   limit,
   onSnapshot,
   serverTimestamp,
   deleteDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { createPagedFeed } from './pagedFeed';
 
 export async function getUserDisplayName(uid) {
   return (await getDoc(doc(db, 'users', uid))).data()?.displayName ?? null;
@@ -80,7 +80,6 @@ export async function getImportedExternalIds(uid) {
   );
 }
 
-export function subscribeToUserActivities(uid, callback) {
-  const q = query(collection(db, 'users', uid, 'activities'), orderBy('createdAt', 'desc'), limit(50));
-  return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+export function getUserActivityFeed(uid) {
+  return createPagedFeed(collection(db, 'users', uid, 'activities'), 50);
 }

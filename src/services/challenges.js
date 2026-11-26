@@ -8,9 +8,9 @@ import {
   orderBy,
   query,
   serverTimestamp,
-  limit,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { createPagedFeed } from './pagedFeed';
 
 function challengesCol(groupId, groupementId) {
   return collection(db, 'groups', groupId, 'groupements', groupementId, 'challenges');
@@ -70,11 +70,9 @@ export function subscribeToCumulative(groupId, groupementId, challengeId, callba
 
 // Le fil des activités individuelles d'un challenge, pour une période donnée
 // (avec leur date) — affiché dans ChallengeScreen.
-export function subscribeToActivities(groupId, groupementId, challengeId, periodKey, callback) {
-  const q = query(
+export function getChallengeActivityFeed(groupId, groupementId, challengeId, periodKey) {
+  return createPagedFeed(
     challengeSubCollection(groupId, groupementId, challengeId, 'periods', periodKey, 'activities'),
-    orderBy('createdAt', 'desc'),
-    limit(50)
+    50
   );
-  return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
 }

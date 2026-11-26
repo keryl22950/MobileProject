@@ -345,7 +345,7 @@ test('Les pages Health Connect de séances et de distances sont suivies séparé
   await assert.rejects(looping.api.readRecentSessions(), /même page/);
 });
 
-test('Le chat sélectionne les 200 messages récents puis les affiche chronologiquement', async () => {
+test('Après les 200 derniers messages, le chat retrouve les précédents sans doublon', async () => {
   const docs = Array.from({ length: 205 }, (_, i) => ({ id: String(i), data: () => ({ createdAt: i }) }));
   const unused = () => {
     throw new Error('Appel inattendu');
@@ -371,11 +371,17 @@ test('Le chat sélectionne les 200 messages récents puis les affiche chronologi
     collection: () => docs,
     orderBy: (field, direction) => ({ field, direction }),
     limit: (count) => ({ count }),
-    query: (items, sort, bound) =>
-      items
-        .slice()
-        .sort((a, b) => (a.data()[sort.field] - b.data()[sort.field]) * (sort.direction === 'desc' ? -1 : 1))
-        .slice(0, bound.count),
+    startAfter: (anchor) => ({ anchor }),
+    query: (items, ...constraints) => {
+      let result = [...items];
+      for (const { field, direction, anchor, count } of constraints) {
+        if (field) result.sort((a, b) => (a.data()[field] - b.data()[field]) * (direction === 'desc' ? -1 : 1));
+        if (anchor) result = result.slice(result.indexOf(anchor) + 1);
+        if (count) result = result.slice(0, count);
+      }
+      return result;
+    },
+    getDocsFromServer: async (selected) => ({ docs: selected }),
     onSnapshot: (selected, callback, errorCallback) => {
       assert.equal(errorCallback, onError);
       callback({ docs: selected });
@@ -383,19 +389,27 @@ test('Le chat sélectionne les 200 messages récents puis les affiche chronologi
     },
   });
   const api = await loadService('groups.js', { 'firebase/firestore': firestore, './firebase': { db: {} } });
-  let messages;
+  const feed = api.getMessageFeed('group');
+  let page;
   assert.equal(
-    api.subscribeToMessages(
-      'group',
-      (value) => {
-        messages = value;
-      },
-      onError
-    ),
+    feed.subscribe((latest) => {
+      page = latest;
+    }, onError),
     unsubscribe
   );
-  assert.equal(messages.length, 200);
-  assert.equal(messages[0].id, '5');
-  assert.equal(messages.at(-1).id, '204');
-  assert.ok(messages.every((message, i) => i === 0 || Number(message.id) > Number(messages[i - 1].id)));
+  assert.equal(page.items.length, 200);
+  assert.equal(page.hasMore, true);
+  const older = await feed.loadOlder(page.cursor);
+  assert.equal(older.hasMore, false);
+  const combined = [...page.items, ...older.items].map(({ id }) => Number(id));
+  assert.deepEqual(
+    combined,
+    Array.from({ length: 205 }, (_, index) => 204 - index)
+  );
+  const paging = await loadService('pagedFeed.js', { 'firebase/firestore': firestore });
+  assert.deepEqual(paging.mergeFeedItems([{ id: '6' }, { id: '5' }], [{ id: '5' }, { id: '4' }]), [
+    { id: '6' },
+    { id: '5' },
+    { id: '4' },
+  ]);
 });
