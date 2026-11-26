@@ -2,7 +2,7 @@ import {
   collection,
   doc,
   addDoc,
-  setDoc,
+  updateDoc,
   deleteDoc,
   onSnapshot,
   orderBy,
@@ -36,13 +36,10 @@ export async function createChallenge({ groupId, groupementId, createdBy, preset
 }
 
 export async function updateChallenge({ groupId, groupementId, challengeId, changes }) {
-  await setDoc(challengeDoc(groupId, groupementId, challengeId), changes, { merge: true });
+  await updateDoc(challengeDoc(groupId, groupementId, challengeId), changes);
 }
 
-// Suppression "superficielle" : le document challenge disparaît (donc invisible
-// dans l'app), mais ses sous-collections (periods, cumulative) restent dans
-// Firestore, orphelines. Une suppression en cascade fiable demanderait une
-// Cloud Function — pas grave à ce stade de test, à revoir si ça compte un jour.
+// Le document disparaît immédiatement. La fonction serveur nettoie ensuite ses descendants.
 export async function deleteChallenge({ groupId, groupementId, challengeId }) {
   await deleteDoc(challengeDoc(groupId, groupementId, challengeId));
 }

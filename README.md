@@ -141,6 +141,16 @@ avec une version de Firebase CLI compatible avec ton JDK :
 firebase emulators:exec --only firestore,auth --project demo-challengeapp "npm run test:emulators"
 ```
 
+Les fonctions de nettoyage en cascade se vérifient séparément sur le projet fictif.
+
+```bash
+npm ci --prefix functions
+firebase emulators:exec --only firestore,functions --project demo-challengeapp "node --test functions/test-cleanup.cjs"
+```
+
+Le déploiement de Cloud Functions nécessite un projet Firebase sur le plan Blaze.
+Le nettoyage concerne les suppressions effectuées après déploiement.
+
 ## Données Firestore
 
 Les nouveaux groupes réservent un code dans `groupInvites/{code}`. Le mode compatible
