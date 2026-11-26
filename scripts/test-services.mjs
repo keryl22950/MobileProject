@@ -3,6 +3,53 @@ import { test } from 'node:test';
 import { loadService } from './load-service.mjs';
 import { planInvitations } from './migrate-group-invitations.mjs';
 
+test('Firebase sépare les émulateurs, le projet de développement et la production', async () => {
+  const previous = globalThis.__DEV__;
+  const keys = ['PROJECT_ID', 'API_KEY', 'APP_ID'].map((key) => 'EXPO_PUBLIC_FIREBASE_DEV_' + key);
+  const saved = keys.map((key) => process.env[key]);
+  async function initialize(channel, projectId) {
+    const calls = [];
+    globalThis.__DEV__ = false;
+    for (const [i, value] of [projectId, 'test-key', 'test-app'].entries()) process.env[keys[i]] = value;
+    await loadService('firebase.js', {
+      'firebase/app': {
+        initializeApp: (config) => {
+          calls.push(config.projectId);
+          return {};
+        },
+      },
+      'firebase/firestore': { getFirestore: () => ({}), connectFirestoreEmulator: () => calls.push('firestore') },
+      'firebase/auth': {
+        initializeAuth: () => ({}),
+        getReactNativePersistence: () => ({}),
+        signInAnonymously: async () => {},
+        onAuthStateChanged: () => {},
+        connectAuthEmulator: () => calls.push('auth'),
+      },
+      '@react-native-async-storage/async-storage': { default: {} },
+      'react-native': { Platform: { OS: 'android' } },
+      'expo-updates': { channel },
+    });
+    return calls;
+  }
+  try {
+    assert.deepEqual(await initialize('preview', 'custom-dev'), ['mobileproject-c534a']);
+    assert.deepEqual(await initialize('development', 'custom-dev'), ['custom-dev']);
+    assert.deepEqual(await initialize('development', 'mobileproject-c534a'), [
+      'demo-challengeapp',
+      'firestore',
+      'auth',
+    ]);
+  } finally {
+    if (previous === undefined) delete globalThis.__DEV__;
+    else globalThis.__DEV__ = previous;
+    keys.forEach((key, i) => {
+      if (saved[i] === undefined) delete process.env[key];
+      else process.env[key] = saved[i];
+    });
+  }
+});
+
 test('La migration conserve les codes uniques et bloque les collisions et les index incohérents', () => {
   const { conflicts, missing } = planInvitations(
     [

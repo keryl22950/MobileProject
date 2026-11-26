@@ -7,9 +7,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "channel": "development",
-      "android": {
-        "env": { "APP_VARIANT": "development" }
-      }
+      "env": { "APP_VARIANT": "development" }
     },
     "preview": {
       "distribution": "internal",

@@ -1,9 +1,17 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { initializeAuth, getReactNativePersistence, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
+import {
+  connectAuthEmulator,
+  initializeAuth,
+  getReactNativePersistence,
+  signInAnonymously,
+  onAuthStateChanged,
+} from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+import { channel } from 'expo-updates';
 
-const firebaseConfig = {
+const productionConfig = {
   apiKey: 'AIzaSyB4smO8Ks72CYPxj6sx_TaiUseGJlc09Yg',
   authDomain: 'mobileproject-c534a.firebaseapp.com',
   databaseURL: 'https://mobileproject-c534a-default-rtdb.europe-west1.firebasedatabase.app',
@@ -14,7 +22,16 @@ const firebaseConfig = {
   measurementId: 'G-D0DEM680VE',
 };
 
-const app = initializeApp(firebaseConfig);
+const development = __DEV__ || channel === 'development';
+const devProjectId = process.env.EXPO_PUBLIC_FIREBASE_DEV_PROJECT_ID;
+const devApiKey = process.env.EXPO_PUBLIC_FIREBASE_DEV_API_KEY;
+const devAppId = process.env.EXPO_PUBLIC_FIREBASE_DEV_APP_ID;
+const separateProject = devProjectId && devProjectId !== productionConfig.projectId && devApiKey && devAppId;
+const useEmulators = development && !separateProject;
+const devConfig = useEmulators
+  ? { projectId: 'demo-challengeapp', apiKey: 'demo-key' }
+  : { projectId: devProjectId, apiKey: devApiKey, appId: devAppId, authDomain: devProjectId + '.firebaseapp.com' };
+const app = initializeApp(development ? devConfig : productionConfig);
 export const db = getFirestore(app);
 
 // Sur React Native, il faut explicitement dire à Firebase Auth d'utiliser
@@ -23,6 +40,12 @@ export const db = getFirestore(app);
 export const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(AsyncStorage),
 });
+
+if (useEmulators) {
+  const host = process.env.EXPO_PUBLIC_FIREBASE_EMULATOR_HOST || (Platform.OS === 'android' ? '10.0.2.2' : '127.0.0.1');
+  connectFirestoreEmulator(db, host, 8180);
+  connectAuthEmulator(auth, `http://${host}:9099`, { disableWarnings: true });
+}
 
 // Connecte l'utilisateur anonymement dès le lancement de l'app.
 // Ça permet d'avoir un identifiant unique par personne sans système

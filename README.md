@@ -37,18 +37,33 @@ Installe l'APK obtenu sur le téléphone (il s'appelle « ChallengeApp (Dev) »)
 npx expo start --dev-client
 ```
 
-### Configurer Firebase (une seule fois)
+### Choisir le projet Firebase
 
-1. Crée un projet sur https://console.firebase.google.com
-2. Active **Firestore Database** et **Authentication** (méthode « Anonyme »)
-3. Renseigne ta config dans `src/services/firebase.js`
-4. Déploie les règles de sécurité (versionnées dans `firestore.rules`) :
+Les builds `preview` et `production` utilisent le projet existant. Le mode
+développement utilise les émulateurs Auth et Firestore par défaut.
 
 ```bash
-npm install -g firebase-tools
-firebase login
-firebase deploy --only firestore:rules
+firebase emulators:start --only firestore,auth --project demo-challengeapp
 ```
+
+Android Emulator utilise `10.0.2.2` et iOS Simulator utilise `127.0.0.1`. Pour
+un téléphone Android branché en USB, exécute `adb reverse tcp:8180 tcp:8180` et
+`adb reverse tcp:9099 tcp:9099`, puis mets
+`EXPO_PUBLIC_FIREBASE_EMULATOR_HOST=127.0.0.1` dans `.env.local`.
+
+Pour développer sur un téléphone sans émulateurs, crée un projet Firebase distinct,
+active Firestore et l’authentification anonyme et ajoute les paramètres de son app web
+dans `.env.local` ou dans l’environnement EAS de développement.
+
+```dotenv
+EXPO_PUBLIC_FIREBASE_DEV_PROJECT_ID=mon-projet-dev
+EXPO_PUBLIC_FIREBASE_DEV_API_KEY=cle-de-l-app-web-dev
+EXPO_PUBLIC_FIREBASE_DEV_APP_ID=id-de-l-app-web-dev
+```
+
+Exécute `firebase deploy --only firestore:rules --project mon-projet-dev` pour ce
+projet. Une configuration de développement absente ou pointant vers l’identifiant
+du projet de production revient aux émulateurs.
 
 ## Importer des séances depuis une montre (Android)
 
