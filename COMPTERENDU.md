@@ -70,7 +70,7 @@ La lecture des documents `groups` reste autorisée à tout compte authentifié p
 
 ### Lot 4 — Fiabiliser les sources de santé et le GPS
 
-- [ ] Health Connect : éviter de sommer les distances de plusieurs origines pour la même séance ; choisir une source cohérente.
+- [x] Health Connect utilise les distances de la source de la séance, ou la source qui couvre le plus de temps. Les intervalles qui se chevauchent ne sont comptés qu’une fois par source.
 - [ ] Remplacer le dédoublonnage « même sport et départ à moins de dix minutes », qui peut fusionner deux séances distinctes ; préserver des identifiants stables.
 - [ ] Vérifier pagination des enregistrements et étendre si nécessaire la fenêtre de sept jours.
 - [ ] Nettoyer les abonnements GPS et le maintien d’écran au départ des écrans et gérer les erreurs de démarrage.

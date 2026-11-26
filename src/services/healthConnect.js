@@ -56,6 +56,43 @@ function toMeters(length) {
   }
 }
 
+function sessionDistance(start, end, sessionOrigin, records) {
+  const byOrigin = new Map();
+  const maxDuration = Math.max((end - start) * 2, 10 * 60 * 1000);
+  for (const record of records) {
+    const recordStart = Date.parse(record.startTime);
+    const recordEnd = Date.parse(record.endTime);
+    const duration = recordEnd - recordStart;
+    const from = Math.max(start.getTime(), recordStart);
+    const to = Math.min(end.getTime(), recordEnd);
+    const meters = toMeters(record.distance);
+    if (!(duration > 0 && duration <= maxDuration && to > from && Number.isFinite(meters) && meters > 0)) continue;
+    const origin = record.metadata?.dataOrigin ?? '';
+    if (!byOrigin.has(origin)) byOrigin.set(origin, []);
+    byOrigin.get(origin).push({ from, to, metersPerMs: meters / duration });
+  }
+  const candidates = [];
+  for (const [origin, intervals] of byOrigin) {
+    let coveredUntil = -Infinity;
+    let coverage = 0;
+    let meters = 0;
+    // N’ajoute qu’une fois chaque portion de temps, même si une source
+    // fournit des échantillons qui chevauchent un relevé récapitulatif.
+    intervals.sort((a, b) => a.from - b.from || b.to - a.to);
+    for (const { from, to, metersPerMs } of intervals) {
+      const uncovered = to - Math.max(from, coveredUntil);
+      if (uncovered <= 0) continue;
+      coverage += uncovered;
+      meters += metersPerMs * uncovered;
+      coveredUntil = to;
+    }
+    candidates.push({ origin, coverage, meters });
+  }
+  const ownSource = sessionOrigin && candidates.find(({ origin }) => origin === sessionOrigin);
+  const best = ownSource || candidates.sort((a, b) => b.coverage - a.coverage || a.origin.localeCompare(b.origin))[0];
+  return best ? best.meters / 1000 : null;
+}
+
 export async function ensureHealthConnectReady() {
   if (Platform.OS !== 'android') {
     throw new Error("L'import depuis une montre est disponible uniquement sur Android pour l'instant.");
@@ -101,26 +138,13 @@ export async function readRecentSessions({ days = 7, hasDistance = false } = {})
 
       const start = new Date(s.startTime);
       const end = new Date(s.endTime);
-      // Distance = relevés qui chevauchent la séance, au prorata du temps commun.
-      // On ignore les relevés beaucoup plus longs que la séance (totaux de la journée).
-      const sessionMs = Math.max(end - start, 1);
-      const meters = distances.reduce((acc, d) => {
-        const dStart = new Date(d.startTime);
-        const dEnd = new Date(d.endTime);
-        const dMs = dEnd - dStart;
-        if (dMs <= 0 || dMs > Math.max(sessionMs * 2, 10 * 60 * 1000)) return acc;
-        const overlap = Math.min(dEnd, end) - Math.max(dStart, start);
-        if (overlap <= 0) return acc;
-        return acc + toMeters(d.distance) * (overlap / dMs);
-      }, 0);
-
       const origin = s.metadata?.dataOrigin;
       return {
         id: s.metadata?.id || s.startTime,
         presetId,
         startTime: start,
         durationMin: Math.round((end - start) / 60000),
-        distanceKm: meters > 0 ? meters / 1000 : null,
+        distanceKm: sessionDistance(start, end, origin, distances),
         sourceLabel: SOURCE_LABELS[origin] || 'Autre application',
       };
     })

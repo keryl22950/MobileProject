@@ -105,7 +105,7 @@ test('Les annonces natives respectent versions numériques, plateformes et liens
   assert.equal(path, null);
 });
 
-async function healthService(hasDistance) {
+async function healthService(hasDistance, readPage) {
   const calls = [];
   const api = await loadService('healthConnect.js', {
     'react-native': { Platform: { OS: 'android' } },
@@ -118,8 +118,9 @@ async function healthService(hasDistance) {
         { recordType: 'ExerciseSession' },
         ...(hasDistance ? [{ recordType: 'Distance' }] : []),
       ],
-      readRecords: async (type) => {
+      readRecords: async (type, filter) => {
         calls.push(type);
+        if (readPage) return readPage(type, filter);
         if (type === 'Distance') {
           assert.ok(hasDistance, 'Lecture interdite sans permission');
           return {
@@ -158,6 +159,33 @@ test('Avec permission Distance, la distance est chargée en kilomètres', async 
   const sessions = await api.readRecentSessions(await api.ensureHealthConnectReady());
   assert.equal(sessions[0].distanceKm, 5);
   assert.deepEqual(calls, ['ExerciseSession', 'Distance']);
+});
+
+test('Une séance utilise une seule source de distance et ignore ses relevés qui se recouvrent', async () => {
+  const startTime = '2026-11-24T08:00:00Z';
+  const endTime = '2026-11-24T08:30:00Z';
+  const session = { exerciseType: 1, startTime, endTime, metadata: { id: 'run', dataOrigin: 'watch' } };
+  const distance = (dataOrigin, meters, end = endTime) => ({
+    startTime,
+    endTime: end,
+    metadata: { dataOrigin },
+    distance: { inMeters: meters },
+  });
+  const { api } = await healthService(true, (type) => ({
+    records:
+      type === 'ExerciseSession'
+        ? [session]
+        : [distance('watch', 5000), distance('watch', 2500, '2026-11-24T08:15:00Z'), distance('phone', 7000)],
+  }));
+  assert.equal((await api.readRecentSessions({ hasDistance: true }))[0].distanceKm, 5);
+  session.metadata.dataOrigin = 'unknown';
+  const fallback = await healthService(true, (type) => ({
+    records:
+      type === 'ExerciseSession'
+        ? [session]
+        : [distance('watch', 2500, '2026-11-24T08:15:00Z'), distance('phone', 7000)],
+  }));
+  assert.equal((await fallback.api.readRecentSessions({ hasDistance: true }))[0].distanceKm, 7);
 });
 
 test('Le chat sélectionne les 200 messages récents puis les affiche chronologiquement', async () => {
