@@ -3,7 +3,7 @@ import { initializeApp, deleteApp } from 'firebase/app';
 import { connectAuthEmulator, getAuth, signInAnonymously } from 'firebase/auth';
 import {
   arrayRemove, arrayUnion, collection, connectFirestoreEmulator, deleteDoc, doc, getDocs,
-  getFirestore, serverTimestamp, setDoc, updateDoc, where, query, writeBatch,
+  getFirestore, getDoc, serverTimestamp, setDoc, updateDoc, where, query, writeBatch,
 } from 'firebase/firestore';
 
 const projectId = 'demo-challengeapp';
@@ -34,6 +34,10 @@ try {
     ['owner', 'participant', 'outsider'].map(client)
   );
   const create = writeBatch(owner.db);
+  const release = doc(owner.db, 'appReleases', 'preview_android');
+  await getDoc(release);
+  await denied(setDoc(release, { version: '2.0.0', installUrl: 'https://example.com' }));
+  await denied(getDocs(collection(owner.db, 'appReleases')));
   create.set(group(owner), { name: 'Test', inviteCode: 'ABCDEF', ownerId: owner.uid, memberIds: [owner.uid] });
   create.set(member(owner), profile('creator'));
   await create.commit();

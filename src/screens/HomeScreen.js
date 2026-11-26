@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { subscribeToMyGroups, leaveGroup } from '../services/groups';
 import Screen from '../components/Screen';
 import PendingActivities from '../components/PendingActivities';
+import AppUpdateBanner from '../components/AppUpdateBanner';
 
 export default function HomeScreen({ navigation }) {
   const { uid } = useAuth();
@@ -60,6 +61,7 @@ export default function HomeScreen({ navigation }) {
         </Pressable>
       )}
 
+      {uid && <AppUpdateBanner />}
       {uid && <PendingActivities key={uid} uid={uid} />}
 
       <FlatList

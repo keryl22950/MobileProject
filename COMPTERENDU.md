@@ -96,6 +96,16 @@ La lecture des documents `groups` reste autorisée à tout compte authentifié p
 
 ## Validation et limites
 
+### Distribution aux proches — 26 novembre 2026
+
+- [x] Bandeau sur l’accueil pour télécharger une mise à jour Expo compatible, puis redémarrer après confirmation.
+- [x] Message distinct pour une nouvelle version native, avec lien HTTPS séparé par canal et plateforme (`appReleases/preview_android`, `preview_ios`, etc.). Comparaison avec le runtime installé, sans inviter à désinstaller l’application et perdre le compte anonyme.
+- [x] Règles locales : lecture d’une annonce par utilisateur connecté, écritures client interdites. Documentation de publication dans le README.
+- [ ] Déployer ces règles et renseigner les vrais liens des versions natives lors de leur distribution. Aucun lien d’installation n’est inventé ni publié par cette modification.
+- [ ] Recette sur build preview Android/iOS : téléchargement, redémarrage, hors ligne, annonce native et ouverture du lien. Diffuser d’abord ce bandeau aux anciens runtimes compatibles.
+
+Validation du 26 novembre : lint et 21 tests locaux réussis ; les tests de règles sur émulateur incluent les permissions des annonces. Aucune publication OTA ni déploiement des règles effectué.
+
 - `npm test` : 20 tests de régression passent le 24 novembre 2026, dont 6 pour la reprise persistante (redémarrage simulé, stockage indisponible, nettoyage échoué, concurrence, isolation des comptes et conservation des tentatives périmées).
 - `npm run lint` : passe sans avertissement après réinstallation des dépendances manquantes. Syntaxe des écrans et services également vérifiée avec Babel.
 - Tests Auth/Firestore : les 11 scénarios d’activités et la suite de règles existante passent ensemble sur les émulateurs (12 tests), dont la limite de 100 challenges / 8 groupes.

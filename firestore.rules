@@ -120,6 +120,12 @@ service cloud.firestore {
             }
         }
 
+        // Annonces administrées via la console Firebase, jamais depuis le client.
+        match /appReleases/{releaseId} {
+            allow get: if isSignedIn();
+            allow list, write: if false;
+        }
+
         match /users/{uid} {
             allow read: if isSignedIn();
             allow create, update: if isSignedIn() && request.auth.uid == uid;

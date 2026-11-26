@@ -77,7 +77,33 @@ Un nouveau `eas build` est nécessaire si tu ajoutes une dépendance native, cha
 l'icône ou `app.config.js`. Dans ce cas, **monte aussi `version` dans `app.config.js`** : la `runtimeVersion`
 en dépend, et les anciens APK ne recevront pas du JS qui appelle un module qu'ils n'ont pas.
 
-## Qualité du code
+## Signaler les mises à jour aux testeurs
+
+L’accueil affiche un bandeau lorsqu’une mise à jour Expo compatible est disponible :
+« Télécharger la mise à jour », puis « Redémarrer et appliquer ». Le redémarrage demande
+confirmation pour laisser terminer les saisies et le GPS. La vérification se fait à
+l’ouverture et au retour au premier plan, au plus une fois par minute. Hors ligne,
+l’application reste utilisable. Ce parcours se teste avec un build `preview`, pas Expo Go
+ou le mode développement.
+
+Une nouvelle version **native** n’est pas détectable via les mises à jour Expo d’un ancien
+runtime. Pour l’annoncer, déployer les règles Firestore du dépôt, puis créer dans la console
+Firebase un document dans `appReleases`, nommé selon le canal et la plateforme :
+`preview_android`, `preview_ios`, `production_android` ou `production_ios`.
+
+Champs : `version` (chaîne `X.Y.Z`, supérieure au runtime installé) et `installUrl`
+(lien HTTPS vers le véritable APK, la page de distribution iOS ou TestFlight).
+Ne publier l’annonce qu’après avoir testé le lien et rendu le build disponible.
+Exemple de version : `1.2.0` pour remplacer le runtime `1.1.0` ; aucun lien fictif n’est
+configuré par défaut. Les clients peuvent lire une annonce, mais jamais la modifier.
+
+Le bandeau natif invite à installer par-dessus l’application actuelle, sans désinstallation,
+pour préserver le compte anonyme. Sur Android, conserver le même identifiant d’application
+et la même clé de signature. Le lien iPhone ne dispense pas des exigences de distribution Apple.
+Une annonce absente, invalide ou inaccessible ne bloque pas l’application. Supprimer le document
+retire l’annonce. Il faut diffuser ce code aux anciens runtimes **avant** de compter sur ce bandeau.
+
+## Vérifications
 
 ```bash
 npm run lint      # ESLint

@@ -2,6 +2,41 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { loadService } from './load-service.mjs';
 
+test('Les annonces natives respectent versions numériques, plateformes et liens HTTPS', async () => {
+  let path;
+  const api = await loadService('appReleases.js', {
+    'firebase/firestore': {
+      doc: (_, ...segments) => {
+        path = segments.join('/');
+        return path;
+      },
+      onSnapshot: (_, callback) => {
+        callback({ exists: () => false });
+        return () => {};
+      },
+    },
+    './firebase': { db: {} },
+  });
+  const release = { version: '1.10.0', installUrl: 'https://expo.dev/builds/example' };
+  assert.deepEqual(api.newerNativeRelease(release, '1.9.0'), release);
+  for (const installed of ['1.10.0', '2.0.0', null, 'fingerprint']) {
+    assert.equal(api.newerNativeRelease(release, installed), null);
+  }
+  for (const installUrl of ['http://example.com', 'javascript:alert(1)', 'https://user:pass@example.com', 'invalid']) {
+    assert.equal(api.newerNativeRelease({ ...release, installUrl }, '1.0.0'), null);
+  }
+  assert.equal(api.newerNativeRelease({ ...release, version: 'bad' }, '1.0.0'), null);
+  let result = 'unset';
+  api.subscribeToAppRelease('preview', 'ios', (value) => {
+    result = value;
+  });
+  assert.equal(path, 'appReleases/preview_ios');
+  assert.equal(result, null);
+  path = null;
+  api.subscribeToAppRelease('development', 'android', () => assert.fail());
+  assert.equal(path, null);
+});
+
 async function healthService(hasDistance) {
   const calls = [];
   const api = await loadService('healthConnect.js', {
