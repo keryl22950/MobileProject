@@ -30,6 +30,9 @@ export default function ProfileScreen({ navigation }) {
       <Pressable style={styles.friendsButton} onPress={() => navigation.navigate('Friends')}>
         <Text style={styles.buttonText}>👥 Amis</Text>
       </Pressable>
+      <Pressable style={styles.friendsButton} onPress={() => navigation.navigate('Account')}>
+        <Text style={styles.buttonText}>Mon compte</Text>
+      </Pressable>
 
       <Text style={styles.sectionTitle}>Accomplissements cumulés</Text>
       {stats.length === 0 ? (

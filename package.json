@@ -9,7 +9,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "node --experimental-vm-modules --test scripts/test-services.mjs scripts/test-activities.mjs scripts/test-pending-activities.mjs",
-    "test:emulators": "node --experimental-vm-modules --test --test-concurrency=1 scripts/test-activities.mjs scripts/test-firestore-rules.mjs",
+    "test:emulators": "node --experimental-vm-modules --test --test-concurrency=1 scripts/test-accounts.mjs scripts/test-activities.mjs scripts/test-firestore-rules.mjs",
     "format": "prettier --write App.js src"
   },
   "dependencies": {

@@ -94,7 +94,7 @@ actuelle reste utilisable en attendant un canal de distribution iPhone.
 
 ### Lot 5 — Rendre le compte récupérable
 
-- [ ] Liaison facultative du compte anonyme à un moyen durable en conservant son UID.
+- [x] Liaison facultative par e-mail et mot de passe depuis le profil. Firebase rattache la méthode de connexion au même UID. Le fournisseur e-mail/mot de passe doit être activé sur le projet Firebase avant la diffusion.
 - [ ] Parcours de connexion/récupération, déconnexion et traitement d’un identifiant déjà lié.
 - [ ] Tester réinstallation et changement d’appareil avec conservation des groupes, amis, stats et identifiants d’import.
 
