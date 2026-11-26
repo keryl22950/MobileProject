@@ -75,7 +75,22 @@ La lecture des documents `groups` reste autorisée à tout compte authentifié p
 - [x] Parcourir toutes les pages Health Connect pour les séances et les distances. L’écran garde sept jours par défaut et propose de chercher jusqu’à trente jours.
 - [x] Libérer le GPS et le maintien d’écran à l’arrêt ou quand l’utilisateur quitte l’écran. Une permission ou un abonnement qui se termine après la fermeture est annulé. Une erreur GPS laisse la saisie manuelle disponible.
 - [ ] Ajouter le suivi en arrière-plan et une carte du parcours, avec permissions, nouveau build natif et recette sur téléphone.
-- [ ] Étudier HealthKit selon les besoins des testeurs iOS.
+- [x] Étudier HealthKit pour les séances des testeurs iOS. L’intégration reste à prioriser quand un build iPhone pourra être distribué.
+
+L’import iOS pourrait reprendre la confirmation et les classements d’Android en lisant
+uniquement les séances HealthKit et la distance des sports pris en charge. Un module
+natif iOS doit activer la capacité HealthKit, déclarer la raison d’accès et vérifier
+que HealthKit est disponible sur l’appareil. L’application ne peut pas distinguer
+un refus de lecture de certains types de données d’une liste vide. L’écran doit donc
+proposer la saisie manuelle dans les deux cas. [Configuration Apple](https://developer.apple.com/documentation/healthkit/setting-up-healthkit)
+et [autorisations de lecture](https://developer.apple.com/documentation/HealthKit/authorizing-access-to-health-data).
+
+L’identifiant HealthKit de chaque séance serait stocké avec un préfixe `hk_` à côté
+des imports Android. Seules les séances confirmées seraient envoyées et le partage
+aux challenges resterait visible avant validation. La recette doit couvrir une
+séance Apple Watch synchronisée, une distance absente, deux sources, un import
+répété et l’absence d’autorisation. Un build iOS signé est nécessaire. La saisie
+actuelle reste utilisable en attendant un canal de distribution iPhone.
 
 ### Lot 5 — Rendre le compte récupérable
 
