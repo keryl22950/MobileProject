@@ -101,7 +101,7 @@ actuelle reste utilisable en attendant un canal de distribution iPhone.
 ### Lot 6 — Données et montée en charge
 
 - [x] Préparer le nettoyage en cascade côté serveur. Les déclencheurs Firestore retirent les descendants d’un groupe, d’un événement ou d’un challenge supprimé. La suppression d’un groupe retire aussi son entrée d’invitation. Le déploiement des fonctions reste à faire, et les suppressions historiques ne sont pas rejouées.
-- [ ] Mesurer puis réduire les lectures imbriquées groupes → événements → challenges de QuickLog et des statistiques.
+- [x] Filtrer les challenges par type côté Firestore pour QuickLog. Le test retourne un document sur quatre dans un événement mixte. Les statistiques collectives gardent un abonnement par challenge affiché, sans réabonner les autres quand un challenge change. Le profil utilise déjà ses totaux matérialisés.
 - [ ] Paginer les historiques (limite actuelle de 50) et le chat (fenêtre de 200).
 - [ ] Compléter les tests des périodes, objectifs dynamiques et calcul GPS ; harmoniser les erreurs d’abonnements.
 

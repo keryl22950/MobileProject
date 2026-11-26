@@ -6,21 +6,11 @@ import { subscribeToChallenges, subscribeToCumulative } from '../services/challe
 export default function StatsScreen({ route }) {
   const { groupId, groupementId } = route.params;
   const [challenges, setChallenges] = useState([]);
-  const [cumulativeByChallenge, setCumulativeByChallenge] = useState({});
 
   useEffect(() => {
     const unsubscribe = subscribeToChallenges(groupId, groupementId, setChallenges);
     return unsubscribe;
   }, [groupId, groupementId]);
-
-  useEffect(() => {
-    const unsubs = challenges.map((c) =>
-      subscribeToCumulative(groupId, groupementId, c.id, (data) => {
-        setCumulativeByChallenge((prev) => ({ ...prev, [c.id]: data }));
-      })
-    );
-    return () => unsubs.forEach((u) => u());
-  }, [challenges, groupId, groupementId]);
 
   return (
     <FlatList
@@ -29,27 +19,36 @@ export default function StatsScreen({ route }) {
       keyExtractor={(item) => item.id}
       contentContainerStyle={{ padding: spacing.md, gap: spacing.lg }}
       ListEmptyComponent={<Text style={styles.empty}>Pas encore de challenge dans ce groupement.</Text>}
-      renderItem={({ item }) => (
-        <View>
-          <Text style={styles.title}>
-            {item.icon} {item.label} — cumul total
-          </Text>
-          {(cumulativeByChallenge[item.id] || []).length === 0 ? (
-            <Text style={styles.empty}>Aucune activité enregistrée encore.</Text>
-          ) : (
-            cumulativeByChallenge[item.id].map((m, i) => (
-              <View key={m.id} style={styles.row}>
-                <Text style={styles.rank}>#{i + 1}</Text>
-                <Text style={styles.name}>{m.name}</Text>
-                <Text style={styles.value}>
-                  {(m.value || 0).toFixed(1)} {item.unit}
-                </Text>
-              </View>
-            ))
-          )}
-        </View>
-      )}
+      renderItem={({ item }) => <ChallengeTotals groupId={groupId} groupementId={groupementId} challenge={item} />}
     />
+  );
+}
+
+function ChallengeTotals({ groupId, groupementId, challenge }) {
+  const [totals, setTotals] = useState([]);
+  useEffect(
+    () => subscribeToCumulative(groupId, groupementId, challenge.id, setTotals),
+    [groupId, groupementId, challenge.id]
+  );
+  return (
+    <View>
+      <Text style={styles.title}>
+        {challenge.icon} {challenge.label} — cumul total
+      </Text>
+      {totals.length === 0 ? (
+        <Text style={styles.empty}>Aucune activité enregistrée encore.</Text>
+      ) : (
+        totals.map((member, index) => (
+          <View key={member.id} style={styles.row}>
+            <Text style={styles.rank}>#{index + 1}</Text>
+            <Text style={styles.name}>{member.name}</Text>
+            <Text style={styles.value}>
+              {(member.value || 0).toFixed(1)} {challenge.unit}
+            </Text>
+          </View>
+        ))
+      )}
+    </View>
   );
 }
 

@@ -43,9 +43,12 @@ export async function findChallengesForSession({ uid, presetId, at = new Date() 
       }
 
       const challengesSnap = await getDocs(
-        collection(db, 'groups', group.id, 'groupements', groupement.id, 'challenges')
+        query(
+          collection(db, 'groups', group.id, 'groupements', groupement.id, 'challenges'),
+          where('presetId', '==', presetId)
+        )
       );
-      const found = challengesSnap.docs.filter((d) => d.data().presetId === presetId);
+      const found = challengesSnap.docs;
 
       if (found.length === 0) {
         skipped.push({ label, reason: 'aucun challenge de ce type dans cet événement' });

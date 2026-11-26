@@ -3,6 +3,47 @@ import { test } from 'node:test';
 import { loadService } from './load-service.mjs';
 import { planInvitations } from './migrate-group-invitations.mjs';
 
+test('QuickLog ne lit que les challenges de l’activité choisie', async () => {
+  const now = new Date();
+  const fixtures = {
+    groups: [{ id: 'group', name: 'Amis', memberIds: ['user'] }],
+    'groups/group/groupements': [{ id: 'event', name: 'Événement' }],
+    'groups/group/groupements/event/challenges': [
+      { id: 'run', presetId: 'running', label: 'Course', unit: 'km' },
+      { id: 'bike', presetId: 'cycling' },
+      { id: 'swim', presetId: 'swimming' },
+      { id: 'pushups', presetId: 'pushups' },
+    ],
+  };
+  let challengeReads = 0;
+  const service = await loadService('quickLog.js', {
+    'firebase/firestore': {
+      collection: (_, ...parts) => ({ path: parts.join('/') }),
+      where: (field, operator, value) => ({ field, operator, value }),
+      query: (collection, filter) => ({ ...collection, filter }),
+      getDocs: async ({ path, filter }) => {
+        const rows = fixtures[path].filter(
+          (row) =>
+            !filter ||
+            (filter.operator === 'array-contains'
+              ? row[filter.field].includes(filter.value)
+              : row[filter.field] === filter.value)
+        );
+        if (path.endsWith('/challenges')) challengeReads += rows.length;
+        return { docs: rows.map((row) => ({ id: row.id, data: () => row })) };
+      },
+    },
+    './firebase': { db: {} },
+    './groupements': { getCurrentPeriod: () => ({ periodKey: 'P0', periodEnd: new Date(now.getTime() + 60000) }) },
+  });
+  const matches = await service.findActiveChallengesForPreset({ uid: 'user', presetId: 'running', at: now });
+  assert.deepEqual(
+    matches.map((match) => match.challengeId),
+    ['run']
+  );
+  assert.equal(challengeReads, 1);
+});
+
 test('Quitter le suivi GPS avant la fin du démarrage libère le maintien d’écran et le GPS', async () => {
   const calls = [];
   let finishWatch;
