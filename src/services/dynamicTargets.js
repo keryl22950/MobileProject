@@ -58,13 +58,15 @@ async function targetForPeriod({ groupId, groupementId, challengeId, baseTarget,
 // Objectif réellement applicable à une période. Pour un événement non dynamique,
 // c'est simplement l'objectif du challenge (aucune lecture Firestore).
 export async function getEffectiveTarget({ groupId, groupementId, groupement, challenge, periodKey }) {
-  if (!groupement?.dynamicTarget) return challenge.target;
+  if (!groupement?.dynamicTarget || !/^P\d+$/.test(periodKey)) return challenge.target;
+  const index = Number(periodKey.slice(1));
+  if (!Number.isSafeInteger(index)) return challenge.target;
   return targetForPeriod({
     groupId,
     groupementId,
     challengeId: challenge.id,
     baseTarget: challenge.target,
     step: groupement.adaptStep ?? 10,
-    index: Number(periodKey.slice(1)),
+    index,
   });
 }

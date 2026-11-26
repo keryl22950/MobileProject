@@ -3,6 +3,63 @@ import { test } from 'node:test';
 import { loadService } from './load-service.mjs';
 import { planInvitations } from './migrate-group-invitations.mjs';
 
+test('Les objectifs dynamiques montent, baissent et respectent le minimum', async () => {
+  const fail = () => assert.fail('Aucune lecture attendue');
+  const api = await loadService('dynamicTargets.js', {
+    'firebase/firestore': {
+      collection: fail,
+      doc: fail,
+      getDoc: fail,
+      getDocs: fail,
+      setDoc: fail,
+      serverTimestamp: fail,
+    },
+    './firebase': { db: {} },
+  });
+  assert.equal(api.computeNextTarget(20, 20, 10), 22);
+  assert.equal(api.computeNextTarget(20, 19, 10), 18);
+  assert.equal(api.computeNextTarget(1.1, 0, 30), 1);
+  assert.equal(
+    await api.getEffectiveTarget({ groupement: { dynamicTarget: true }, challenge: { target: 15 }, periodKey: 'PNaN' }),
+    15
+  );
+});
+
+test('Une période invalide ne produit pas de classement et le dernier instant d’une période reste cohérent', async () => {
+  const fail = () => assert.fail('Aucune lecture attendue');
+  const api = await loadService('groupements.js', {
+    'firebase/firestore': {
+      collection: fail,
+      doc: fail,
+      addDoc: fail,
+      updateDoc: fail,
+      deleteDoc: fail,
+      onSnapshot: fail,
+      orderBy: fail,
+      query: fail,
+      serverTimestamp: fail,
+    },
+    './firebase': { db: {} },
+  });
+  const startedAt = new Date('2026-11-24T08:00:00Z');
+  const recurrent = { startedAt, recurring: true, recurrenceHours: 1 };
+  assert.equal(api.getCurrentPeriod(recurrent, new Date(startedAt.getTime() - 1)).notStarted, true);
+  assert.equal(api.getCurrentPeriod(recurrent, new Date(startedAt.getTime() + 3599999)).periodKey, 'P0');
+  assert.equal(api.getCurrentPeriod(recurrent, new Date(startedAt.getTime() + 3600000)).periodKey, 'P1');
+  assert.equal(api.getCurrentPeriod({ ...recurrent, recurrenceHours: 0 }), null);
+  assert.equal(api.getCurrentPeriod({ ...recurrent, startedAt: 'invalide' }), null);
+});
+
+test('Le calcul GPS garde zéro, la distance entre deux longitudes et les antipodes', async () => {
+  const { distanceKm } = await loadService('../utils/geo.js', {});
+  const origin = { latitude: 0, longitude: 0 };
+  assert.equal(distanceKm(origin, origin), 0);
+  assert.ok(Math.abs(distanceKm(origin, { ...origin, longitude: 1 }) - 111.195) < 0.001);
+  assert.ok(
+    Math.abs(distanceKm({ latitude: 45, longitude: 20 }, { latitude: -45, longitude: -160 }) - 20015.087) < 0.01
+  );
+});
+
 test('QuickLog ne lit que les challenges de l’activité choisie', async () => {
   const now = new Date();
   const fixtures = {

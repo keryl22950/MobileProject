@@ -11,13 +11,21 @@ export default function HomeScreen({ navigation }) {
   const { uid } = useAuth();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     if (!uid) return;
-    const unsubscribe = subscribeToMyGroups(uid, (data) => {
-      setGroups(data);
-      setLoading(false);
-    });
+    const unsubscribe = subscribeToMyGroups(
+      uid,
+      (data) => {
+        setGroups(data);
+        setLoading(false);
+      },
+      () => {
+        setLoadFailed(true);
+        setLoading(false);
+      }
+    );
     return unsubscribe;
   }, [uid]);
 
@@ -72,7 +80,9 @@ export default function HomeScreen({ navigation }) {
           <Text style={styles.empty}>
             {loading
               ? 'Chargement...'
-              : "Tu ne fais partie d'aucun groupe pour l'instant.\nCrées-en un ou rejoins celui de tes proches !"}
+              : loadFailed
+                ? 'Impossible de charger tes groupes. Vérifie ta connexion.'
+                : "Tu ne fais partie d'aucun groupe pour l'instant.\nCrées-en un ou rejoins celui de tes proches !"}
           </Text>
         }
         renderItem={({ item }) => (

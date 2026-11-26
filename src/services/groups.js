@@ -18,6 +18,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { createPagedFeed } from './pagedFeed';
+import { subscriptionErrors } from './subscriptionErrors';
 
 // Génère un code court, sans caractères ambigus (I/O/0/1), pour inviter
 // facilement à l'oral ou par SMS.
@@ -123,38 +124,32 @@ export async function joinGroupByCode({ uid, userName, code }) {
 }
 
 // Liste des groupes où l'utilisateur courant est membre (pour l'écran d'accueil).
-export function subscribeToMyGroups(uid, callback) {
+export function subscribeToMyGroups(uid, callback, onError) {
   const q = query(collection(db, 'groups'), where('memberIds', 'array-contains', uid));
   return onSnapshot(
     q,
     (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-    (error) => {
-      if (error.code !== 'permission-denied') console.error(error);
-    }
+    subscriptionErrors('mes groupes', onError)
   );
 }
 
-export function subscribeToGroup(groupId, callback) {
+export function subscribeToGroup(groupId, callback, onError) {
   return onSnapshot(
     doc(db, 'groups', groupId),
     (snap) => {
       if (snap.exists()) callback({ id: snap.id, ...snap.data() });
     },
-    (error) => {
-      if (error.code !== 'permission-denied') console.error(error);
-    }
+    subscriptionErrors('groupe', onError)
   );
 }
 
 // Membres du groupe, avec leur rôle. Triés par date d'arrivée.
-export function subscribeToMembers(groupId, callback) {
+export function subscribeToMembers(groupId, callback, onError) {
   const q = query(collection(db, 'groups', groupId, 'members'), orderBy('joinedAt', 'asc'));
   return onSnapshot(
     q,
     (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-    (error) => {
-      if (error.code !== 'permission-denied') console.error(error);
-    }
+    subscriptionErrors('membres', onError)
   );
 }
 

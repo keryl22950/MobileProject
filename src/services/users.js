@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { createPagedFeed } from './pagedFeed';
+import { subscriptionErrors } from './subscriptionErrors';
 
 export async function getUserDisplayName(uid) {
   return (await getDoc(doc(db, 'users', uid))).data()?.displayName ?? null;
@@ -51,23 +52,42 @@ export async function addFriend({ uid, friendUid }) {
   await setDoc(doc(db, 'users', uid, 'friends', friendUid), { addedAt: serverTimestamp() });
 }
 
-export function subscribeToFriends(uid, callback) {
-  return onSnapshot(collection(db, 'users', uid, 'friends'), async (snap) => {
-    const friendIds = snap.docs.map((d) => d.id);
-    const profiles = await Promise.all(
-      friendIds.map(async (fid) => {
-        const userSnap = await getDoc(doc(db, 'users', fid));
-        return userSnap.exists() ? { id: fid, ...userSnap.data() } : { id: fid, displayName: '?' };
-      })
-    );
-    callback(profiles);
-  });
+export function subscribeToFriends(uid, callback, onError) {
+  let revision = 0;
+  const report = subscriptionErrors('amis', onError);
+  const unsubscribe = onSnapshot(
+    collection(db, 'users', uid, 'friends'),
+    async (snap) => {
+      const current = ++revision;
+      const friendIds = snap.docs.map((d) => d.id);
+      try {
+        const profiles = await Promise.all(
+          friendIds.map(async (fid) => {
+            const userSnap = await getDoc(doc(db, 'users', fid));
+            return userSnap.exists() ? { id: fid, ...userSnap.data() } : { id: fid, displayName: '?' };
+          })
+        );
+        if (current === revision) callback(profiles);
+      } catch (error) {
+        if (current === revision) report(error);
+      }
+    },
+    report
+  );
+  return () => {
+    revision++;
+    unsubscribe();
+  };
 }
 
-export function subscribeToUserStats(uid, callback) {
-  return onSnapshot(collection(db, 'users', uid, 'stats'), (snap) => {
-    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  });
+export function subscribeToUserStats(uid, callback, onError) {
+  return onSnapshot(
+    collection(db, 'users', uid, 'stats'),
+    (snap) => {
+      callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    },
+    subscriptionErrors('statistiques du profil', onError)
+  );
 }
 
 export async function getImportedExternalIds(uid) {

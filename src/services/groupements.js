@@ -10,6 +10,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { subscriptionErrors } from './subscriptionErrors';
 
 export async function createGroupement({
   groupId,
@@ -60,26 +61,22 @@ export async function deleteGroupement({ groupId, groupementId }) {
   await deleteDoc(doc(db, 'groups', groupId, 'groupements', groupementId));
 }
 
-export function subscribeToGroupements(groupId, callback) {
+export function subscribeToGroupements(groupId, callback, onError) {
   const q = query(collection(db, 'groups', groupId, 'groupements'), orderBy('createdAt', 'desc'));
   return onSnapshot(
     q,
     (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-    (error) => {
-      if (error.code !== 'permission-denied') console.error(error);
-    }
+    subscriptionErrors('événements', onError)
   );
 }
 
-export function subscribeToGroupement(groupId, groupementId, callback) {
+export function subscribeToGroupement(groupId, groupementId, callback, onError) {
   return onSnapshot(
     doc(db, 'groups', groupId, 'groupements', groupementId),
     (snap) => {
       if (snap.exists()) callback({ id: snap.id, ...snap.data() });
     },
-    (error) => {
-      if (error.code !== 'permission-denied') console.error(error);
-    }
+    subscriptionErrors('événement', onError)
   );
 }
 
@@ -92,6 +89,14 @@ export function getCurrentPeriod(groupement, at = new Date()) {
   const periodLengthHours = groupement.recurring ? groupement.recurrenceHours : groupement.durationHours;
   const periodLengthMs = periodLengthHours * 60 * 60 * 1000;
   const atMs = at.getTime();
+  if (
+    !Number.isFinite(startedAt.getTime()) ||
+    !Number.isFinite(atMs) ||
+    !Number.isFinite(periodLengthMs) ||
+    periodLengthMs <= 0
+  ) {
+    return null;
+  }
 
   if (atMs < startedAt.getTime()) {
     return { periodKey: null, periodIndex: -1, periodStart: null, periodEnd: startedAt, notStarted: true };

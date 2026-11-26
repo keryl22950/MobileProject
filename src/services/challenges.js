@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { createPagedFeed } from './pagedFeed';
+import { subscriptionErrors } from './subscriptionErrors';
 
 function challengesCol(groupId, groupementId) {
   return collection(db, 'groups', groupId, 'groupements', groupementId, 'challenges');
@@ -44,28 +45,44 @@ export async function deleteChallenge({ groupId, groupementId, challengeId }) {
   await deleteDoc(challengeDoc(groupId, groupementId, challengeId));
 }
 
-export function subscribeToChallenges(groupId, groupementId, callback) {
+export function subscribeToChallenges(groupId, groupementId, callback, onError) {
   const q = query(challengesCol(groupId, groupementId), orderBy('createdAt', 'desc'));
-  return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+  return onSnapshot(
+    q,
+    (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    subscriptionErrors('challenges', onError)
+  );
 }
 
-export function subscribeToChallenge(groupId, groupementId, challengeId, callback) {
-  return onSnapshot(challengeDoc(groupId, groupementId, challengeId), (snap) => {
-    if (snap.exists()) callback({ id: snap.id, ...snap.data() });
-  });
+export function subscribeToChallenge(groupId, groupementId, challengeId, callback, onError) {
+  return onSnapshot(
+    challengeDoc(groupId, groupementId, challengeId),
+    (snap) => {
+      if (snap.exists()) callback({ id: snap.id, ...snap.data() });
+    },
+    subscriptionErrors('challenge', onError)
+  );
 }
 
-export function subscribeToProgress(groupId, groupementId, challengeId, periodKey, callback) {
+export function subscribeToProgress(groupId, groupementId, challengeId, periodKey, callback, onError) {
   const q = query(
     challengeSubCollection(groupId, groupementId, challengeId, 'periods', periodKey, 'progress'),
     orderBy('value', 'desc')
   );
-  return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+  return onSnapshot(
+    q,
+    (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    subscriptionErrors('progression', onError)
+  );
 }
 
-export function subscribeToCumulative(groupId, groupementId, challengeId, callback) {
+export function subscribeToCumulative(groupId, groupementId, challengeId, callback, onError) {
   const q = query(challengeSubCollection(groupId, groupementId, challengeId, 'cumulative'), orderBy('value', 'desc'));
-  return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+  return onSnapshot(
+    q,
+    (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    subscriptionErrors('cumul', onError)
+  );
 }
 
 // Le fil des activités individuelles d'un challenge, pour une période donnée
