@@ -127,6 +127,21 @@ des groupes à leurs membres. Avant d’activer ce réglage, migrer les codes hi
 et diffuser le nouveau client. Un lien d’invitation existant utilise toujours
 `challengeapp://join/<code>`.
 
+### Migrer les invitations existantes
+
+1. Déployer les règles avec `appConfig/groupPrivacy.enabled` absent ou à `false`.
+2. Avec Google Cloud CLI et des identifiants d’application par défaut qui ont accès
+   au projet Firebase, lancer le diagnostic en lecture seule.
+   `node scripts/migrate-group-invitations.mjs <project-id>`
+3. Résoudre les collisions signalées dans la console Firebase et prévenir les
+   propriétaires dont le code change. Relancer le diagnostic, puis ajouter `--apply`
+   pour créer uniquement les invitations manquantes. Chaque écriture exige que
+   l’index soit encore vacant. Relancer le diagnostic après l’écriture.
+4. Diffuser le nouveau client. Une fois les anciens clients remplacés et le diagnostic
+   sans anomalie ni entrée manquante, créer ou mettre à jour le document
+   `appConfig/groupPrivacy` avec `enabled: true`. Remettre `enabled: false` rétablit
+   la compatibilité si la diffusion n’est pas terminée.
+
 Les saisies directes, QuickLog et imports utilisent une transaction commune dans
 `src/services/activities.js` : historique, statistiques, journal, progression et cumul
 sont enregistrés ensemble. Une nouvelle tentative avec le même identifiant ne recompte

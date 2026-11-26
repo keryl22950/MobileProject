@@ -1,6 +1,27 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { loadService } from './load-service.mjs';
+import { planInvitations } from './migrate-group-invitations.mjs';
+
+test('La migration conserve les codes uniques et bloque les collisions et les index incohérents', () => {
+  const { conflicts, missing } = planInvitations(
+    [
+      { groupId: 'a', code: 'ABCDEF' },
+      { groupId: 'b', code: 'BCDEFG' },
+      { groupId: 'c', code: 'BCDEFG' },
+      { groupId: 'd', code: 'CDEFGH' },
+      { groupId: 'e', code: 'DEFGHJ' },
+      { groupId: 'f', code: 'invalid' },
+    ],
+    new Map([
+      ['CDEFGH', 'different'],
+      ['DEFGHJ', 'e'],
+    ])
+  );
+  assert.deepEqual(missing, [{ code: 'ABCDEF', groupId: 'a' }]);
+  assert.equal(conflicts.length, 3);
+  assert.deepEqual(conflicts.find((entry) => entry.groupIds?.includes('b')).groupIds, ['b', 'c']);
+});
 
 test('Les annonces natives respectent versions numériques, plateformes et liens HTTPS', async () => {
   let path;
